@@ -1,70 +1,60 @@
-# Getting Started with Create React App
+# Chat Messaging Template
+This project contains the necessary scaffold in order to get your multi-million chat application idea started! The main technology driving this application is `socket.io` which allows two way communication between the client side and server side through so called "socket events". 
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Unfortunately, the maker of this template is lousy and forgot to put in the necessary security measures. It's your job to ensure a safe communication between users of your chat system. 
 
-## Available Scripts
+# Setup
+To setup, install these packages 
 
-In the project directory, you can run:
+```bash
+pip install SQLAlchemy flask-socketio simple-websocket
+```
 
-### `npm start`
+# Running the App
+To run the app, 
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+python3 app.py
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+# Project Navigation
+The templates folder contains all of the HTML template files that will be served to the user. These HTML files, as you may have noticed, all has a `.jinja` extension. In actuality, these files also contain various Jinja extended syntax that makes rendering the data to the server a lot easier. See the comments on top of these files to know what they are.
 
-### `npm test`
+`app.py` is where the flask application "lives" and this is where it is initialized, `db.py` is where the database interface is. `models.py` is where you define the various database models. This is where you tell SQLAlchemy how to map the SQL tables into Python objects. Finally `socket_routes.py` is where you can find out what happens when JS emits a socket event to the server.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The static folder is where you keep all of the website's assets, this includes your JS and CSS scripts, images, videos?, etc. 
 
-### `npm run build`
+Finally, the database folder is what makes everything persistent. This is where your database is stored. Delete the database folder to do a clean wipe of your entire database. But beware, with great power, ok whatever you know the rest of the line.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# Usage
+To use the app, setup and run the app as per the instructions above. Also, if you're using VSCode, I recommend installing the Better Jinja extension (it's not perfect unfortunately, but it's enough). 
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Now, it will show `Running on http://127.0.0.1:5000`, open that link in 2 different browsers (for instance Chrome and Firefox).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Click "Sign up", or "Log in" if you've already signed up. Put in your username and password.
 
-### `npm run eject`
+Now, open your other browser and sign up/log in with a different username and password. 
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+In the first browser, type in the other username (the username inputted into the other browser) and click Chat. Do the same for the other browser.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Once both users have connected, you're good to go. Go ahead and start chatting to yourself :D
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+To chat with a different user, feel free to leave the room and chat with another user.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# A Warning
+Since this app uses cookies, you can't open it in separate tabs to test multiple client communication. This is because cookies are shared across tabs. You'd have to use multiple browsers to test client communication.
 
-## Learn More
+# Credits (or I guess the "tech stack" used)
+- Javascript
+- Python
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Javascript Dependencies
+- Socket.io
+- Axios (for sending post requests, but a bit easier than using fetch())
+- JQuery (if you're familiar with web frameworks this is like the stone age all over again)
+- Cookies (small browser library that makes working with cookies just a bit easier)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Python Dependencies
+- Template Engine: Jinja
+- Database ORM: SQL Alchemy (use SQLite instead if you are an SQL master)
+- Flask Socket.io

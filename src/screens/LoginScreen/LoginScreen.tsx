@@ -17,9 +17,9 @@ export const LoginScreen = () => {
     // Add your login logic here
     console.log('Username:', username);
     console.log('Password:', password);
-    console.log("server_url:", process.env.HEROKU_URL)
+    console.log("Server_url:", process.env.NEXT_PUBLIC_HEROKU_URL)
     try {
-      const response = await axios.post(`${process.env.HEROKU_URL}/login/user`, { username, password });
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_HEROKU_URL}/login/user`, { username, password });
     } catch (error) {
       if (error.response.status === 401) {
         setError('Incorrect password.');

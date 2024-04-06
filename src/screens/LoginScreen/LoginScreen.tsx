@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { UserUpdateContext } from  "../../context/UserContextProvider.tsx";
 import './LoginScreen.css'
 import axios from 'axios';
+import { SERVER_URL } from '../../utils/Utils.tsx';
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
@@ -19,8 +20,7 @@ export const LoginScreen = () => {
     console.log('Password:', password);
 
     try {
-      const response = await axios.post('/login/user', { username, password });
-      // Handle successful login, such as redirecting to another page
+      const response = await axios.post(`${SERVER_URL}/login/user`, { username, password });
     } catch (error) {
       if (error.response.status === 401) {
         setError('Incorrect password.');

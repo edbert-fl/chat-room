@@ -2,23 +2,43 @@ import React, { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserUpdateContext } from  "../../context/UserContextProvider.tsx";
 import './LoginScreen.css'
+import axios from 'axios';
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const navigation = useNavigate();
 
   const setCurrUser = useContext(UserUpdateContext);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     // Add your login logic here
     console.log('Username:', username);
     console.log('Password:', password);
+
+    try {
+      const response = await axios.post('/login/user', { username, password });
+      // Handle successful login, such as redirecting to another page
+    } catch (error) {
+      if (error.response.status === 401) {
+        setError('Incorrect password.');
+        return;
+      } else if (error.response.status === 404) {
+        setError('User not found.');
+        return;
+      } else {
+        setError('An error occurred.');
+        return;
+      }
+    }
+    
     setCurrUser({
       id: 1, 
-      name: "Penguin"
+      name: username
     })
+
     navigation("/")
   };
 
@@ -43,6 +63,7 @@ export const LoginScreen = () => {
       </div>
       <button onClick={handleLogin} className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring focus:ring-teal-300">Login</button>
       <div className='text-center'>
+        <p>{error}</p>
         <p>Don't have an account?</p>
         <p className="text-teal-600"><Link to="/register">Register here!</Link></p>
       </div>

@@ -23,16 +23,16 @@ export const LoginScreen = () => {
       console.log(response)
     } catch (error) {
       console.log(error)
-      if (error.response.status === 401) {
+      if (error.response && error.response.status === 401) {
         setError('Incorrect password.');
         return;
-      } else if (error.response.status === 404) {
+    } else if (error.response && error.response.status === 404) {
         setError('User not found.');
         return;
-      } else {
+    } else {
         setError('An error occurred.');
         return;
-      }
+    }
     }
     
     setCurrUser({

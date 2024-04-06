@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { UserUpdateContext } from  "../../context/UserContextProvider.tsx";
 import './LoginScreen.css'
 import axios from 'axios';
-import { SERVER_URL } from '../../utils/Utils.tsx';
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
@@ -18,9 +17,9 @@ export const LoginScreen = () => {
     // Add your login logic here
     console.log('Username:', username);
     console.log('Password:', password);
-    console.log("server_url:", SERVER_URL)
+    console.log("server_url:", process.env.HEROKU_URL)
     try {
-      const response = await axios.post(`${SERVER_URL}/login/user`, { username, password });
+      const response = await axios.post(`${process.env.HEROKU_URL}/login/user`, { username, password });
     } catch (error) {
       if (error.response.status === 401) {
         setError('Incorrect password.');

@@ -18,10 +18,9 @@ export const LoginScreen = () => {
     // Add your login logic here
     console.log('Username:', username);
     console.log('Password:', password);
-
+    console.log("server_url:", SERVER_URL)
     try {
       const response = await axios.post(`${SERVER_URL}/login/user`, { username, password });
-      console.log("server_url:", SERVER_URL)
     } catch (error) {
       if (error.response.status === 401) {
         setError('Incorrect password.');

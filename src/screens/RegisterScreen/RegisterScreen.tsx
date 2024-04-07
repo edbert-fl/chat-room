@@ -1,29 +1,61 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "./RegisterScreen.css";
+import axios from "axios";
+import { UserUpdateContext } from "../../context/UserContextProvider.tsx";
 
 export const RegisterScreen = () => {
-  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleRegister = () => {
-    // Add your register logic here
-    console.log("Email:", email);
-    console.log("New Password:", newPassword);
-    console.log("Confirm Password:", confirmPassword);
+  const setCurrUser = useContext(UserUpdateContext);
+
+  const navigation = useNavigate();
+
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      setError("Passwords need to match!");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_HEROKU_URL}/user/register`,
+        {
+          username: username,
+          email: email,
+          password: password,
+        }
+      );
+      console.log(response);
+      setCurrUser({
+        id: response.data.user.user_id,
+        name: username,
+      });
+
+      navigation("/");
+    } catch (error) {
+      if (error.response) {
+        setError("An unexpected error occurred.");
+        return;
+      } else {
+        setError("Network error.");
+      }
+    }
   };
 
   return (
-    <div className="register-form p-8 rounded-lg shadow-lg w-full">
+    <div className="register-form p-8 min-w-100 rounded-lg shadow-lg w-full">
       <h1 className="text-2xl text-center mb-4 text-teal-600">Register</h1>
       <div className="mb-10">
         <input
           type="text"
           placeholder="Display Name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-400 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
         />
         <input
@@ -36,8 +68,8 @@ export const RegisterScreen = () => {
         <input
           type="password"
           placeholder="New Password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
         />
         <input
@@ -47,6 +79,7 @@ export const RegisterScreen = () => {
           onChange={(e) => setConfirmPassword(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
         />
+        <p className="text-red-600 text-sm">{error}</p>
       </div>
       <button
         onClick={handleRegister}
@@ -57,7 +90,7 @@ export const RegisterScreen = () => {
       <div className="text-center">
         <p>Already have an account?</p>
         <p className="text-teal-600">
-          <Link to="/login">Sgin in here!</Link>
+          <Link to="/login">Sign in here!</Link>
         </p>
       </div>
     </div>

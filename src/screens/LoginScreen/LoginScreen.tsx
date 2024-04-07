@@ -14,32 +14,30 @@ export const LoginScreen = () => {
   const setCurrUser = useContext(UserUpdateContext);
 
   const handleLogin = async () => {
-    // Add your login logic here
-    console.log("Username:", username);
-    console.log("Password:", password);
-    console.log("Server_url:", process.env.REACT_APP_HEROKU_URL);
     try {
       const response = await axios.post(
-        `${process.env.REACT_APP_HEROKU_URL}/login/user`,
+        `${process.env.REACT_APP_HEROKU_URL}/user/login`,
         {
           username: username,
           password: password,
         }
       );
-      console.log(response);
+      console.log(response.data);
     } catch (error) {
-      if (error.response && error.response.status === 401) {
-        setError("Incorrect password.");
-        return;
-      } else if (error.response && error.response.status === 404) {
-        setError("User not found.");
-        return;
-      } else if (error.response && error.response.status === 400) {
-        setError("Please input username and password.");
+      if (error.response) {
+        setError(`${error.response.mes}`)
+        if (error.response.status === 401) {
+          setError("Invalid credentials.");
+        } else if (error.response.status === 404) {
+          setError("User not found.");
+        } else if (error.response.status === 400) {
+          setError("Please input username and password.");
+        } else {
+          setError("An unexpected error occurred.");
+        }
         return;
       } else {
-        setError("An error occurred.");
-        return;
+        setError("Network error.");
       }
     }
 
@@ -54,7 +52,7 @@ export const LoginScreen = () => {
   return (
     <div className="login-form shadow-md p-20 rounded-lg">
       <h1 className="text-2xl text-center mb-4 text-teal-600">Login</h1>
-      <div className="mb-10">
+      <div className="mb-5">
         <input
           type="text"
           placeholder="Username"
@@ -69,6 +67,7 @@ export const LoginScreen = () => {
           onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
         />
+        <p className="text-red-600 text-sm">{error}</p>
       </div>
       <button
         onClick={handleLogin}
@@ -77,7 +76,6 @@ export const LoginScreen = () => {
         Login
       </button>
       <div className="text-center">
-        <p>{error}</p>
         <p>Don't have an account?</p>
         <p className="text-teal-600">
           <Link to="/register">Register here!</Link>

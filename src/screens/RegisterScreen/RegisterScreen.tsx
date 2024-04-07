@@ -2,6 +2,8 @@ import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./RegisterScreen.css";
 import axios from "axios";
+import * as crypto from 'crypto-js';
+
 import { UserUpdateContext } from "../../context/UserContextProvider.tsx";
 
 export const RegisterScreen = () => {
@@ -22,12 +24,17 @@ export const RegisterScreen = () => {
     }
 
     try {
+      const salt = crypto.lib.WordArray.random(127).toString(crypto.enc.Base64);
+      const hashedPassword = crypto.SHA256(password + salt);
+      const hashedPasswordString = hashedPassword.toString(crypto.enc.Base64);
+      
       const response = await axios.post(
         `${process.env.REACT_APP_HEROKU_URL}/user/register`,
         {
           username: username,
           email: email,
-          password: password,
+          salt: salt,
+          hashedPassword: hashedPasswordString,
         }
       );
       console.log(response);

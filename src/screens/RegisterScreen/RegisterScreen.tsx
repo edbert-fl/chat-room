@@ -25,7 +25,7 @@ export const RegisterScreen = () => {
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      setError("Passwords need to match!");
+      setError("Passwords need to match");
       return;
     }
 
@@ -70,10 +70,12 @@ export const RegisterScreen = () => {
         });
 
         navigation("/");
+      } else {
+        setError(`${response.data.message}`)
       }
     } catch (error) {
       if (error.response) {
-        setError("An unexpected error occurred.");
+        setError(`${error.response.data.message}`)
         return;
       } else {
         setError("Network error.");

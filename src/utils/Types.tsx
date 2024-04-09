@@ -7,7 +7,9 @@ export interface Message {
 
 export interface User {
     id: number,
-    name: string,
+    username: string,
+    email: string,
+    created_at: Date,
 }
 
 export const dateTimeFormat = "MM/DD/YYYY h:mm A"

@@ -23,7 +23,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   let prevAuthorID: number | null = null;
   const currUser = useContext(UserContext);
   const [messageDraft, setMessageDraft] = useState<string>("");
-  const [chatLoading, setChatLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(true);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {

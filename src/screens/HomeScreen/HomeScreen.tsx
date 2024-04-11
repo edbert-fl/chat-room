@@ -18,6 +18,7 @@ const HomeScreen = () => {
   // Function to handle friend selection
   const handleFriendSelect = (friend) => {
     setSelectedFriend(friend);
+    setMessages([]);
     getMessages(friend);
   };
 

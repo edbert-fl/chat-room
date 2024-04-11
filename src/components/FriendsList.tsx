@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { RiUserAddLine } from "react-icons/ri";
 import colors from "tailwindcss/colors";
 import { User } from "../utils/Types";
@@ -23,10 +23,12 @@ export const FriendsList: React.FC<FriendsListProps> = ({
   getFriends,
 }) => {
   const setCurrUser = useContext(UserUpdateContext);
-  
+  const [friendListLoading, setFriendListLoading] = useState(false);
+
   useEffect(() => {
+    setFriendListLoading(true);
     getFriends();
-    // eslint-disable-next-line
+    setFriendListLoading(false);
   }, []);
 
   const handleLogout = () => {
@@ -45,28 +47,56 @@ export const FriendsList: React.FC<FriendsListProps> = ({
         </button>
       </div>
 
-      <ul className="h-[80%]">
-        {friends.map((friend) => (
-          <li
-            key={friend.id}
-            className={`cursor-pointer py-2 px-4 mx-2 my-1 rounded-md ${
-              selectedFriend && selectedFriend.id === friend.id
-                ? "bg-teal-300"
-                : ""
-            }
+      {friendListLoading ? (
+        <div className="h-[80%]">
+          <div className="animate-pulse p-5 flex h-10 w-4/5 space-x-4">
+            <div className="flex-1 space-y-2 py-1">
+              <div className="grid grid-cols-4 gap-1">
+                <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                <div className="h-5 bg-gray-200 rounded col-span-2"></div>
+                <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+              </div>
+              <div className="pt-5 grid grid-cols-5 gap-1">
+                <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+              </div>
+              <div className="grid grid-cols-6 gap-1">
+                <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ul className="h-[80%]">
+          {friends.map((friend) => (
+            <li
+              key={friend.id}
+              className={`cursor-pointer py-2 px-4 mx-2 my-1 rounded-md ${
+                selectedFriend && selectedFriend.id === friend.id
+                  ? "bg-teal-300"
+                  : ""
+              }
               ${
                 selectedFriend && selectedFriend.id !== friend.id
                   ? "hover:bg-gray-100"
                   : ""
               }`}
-            onClick={() => handleFriendSelect(friend)}
-          >
-            <span className="text-xl">{<RandomEmoji id={friend.id} />}</span>{" "}
-            {friend.username}
-          </li>
-        ))}
-      </ul>
-      <Link className="ml-6 flex flex-row items-center" to="/" onClick={handleLogout}>
+              onClick={() => handleFriendSelect(friend)}
+            >
+              <span className="text-xl">{<RandomEmoji id={friend.id} />}</span>{" "}
+              {friend.username}
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link
+        className="ml-6 flex flex-row items-center"
+        to="/"
+        onClick={handleLogout}
+      >
         <FiLogOut className="text-lg" />
         <span className="ml-2 text-lg">Logout</span>
       </Link>

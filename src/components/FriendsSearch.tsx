@@ -19,6 +19,7 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
 }) => {
   const [friendRequests, setFriendRequests] = useState<LoadingRequest[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [loading, setLoading] = useState(false);
   const currUser = useContext(UserContext);
 
   bouncy.register();
@@ -28,6 +29,7 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
   }, []);
 
   const sendFriendRequest = (requestedUsername) => {
+    setLoading(true);
     fetch(`${process.env.REACT_APP_HEROKU_URL}/friend/add`, {
       method: "POST",
       headers: {
@@ -52,6 +54,7 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       .catch((error) => {
         triggerNotification(false, `Error sending friend request`);
       });
+      setLoading(false);
   };
 
   const getFriendRequests = () => {
@@ -171,6 +174,11 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       });
   };
 
+  const handleSearch = () => {
+    sendFriendRequest(searchText);
+    setSearchText("");
+  };
+
   return (
     <div
       className={`fixed inset-y-0 left-0 border-r bg-white pr-5 w-1/4 min-w-80 border-gray-300 ${
@@ -189,20 +197,31 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
         <h1 className="text-xl font-semibold ml-3">Friend Requests</h1>
       </div>
       <div>
-        <div className="p-4">
+        <div className="p-4 flex flex-row items-center">
           <input
             type="text"
             placeholder="Search for friends"
-            className="border border-gray-300 p-2 rounded-md w-full focus:outline focus:outline-teal-300"
+            className="border border-gray-300 p-2 rounded-md h-10 w-3/4 focus:outline focus:outline-teal-300"
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
-                sendFriendRequest(searchText);
-                setSearchText("");
+                handleSearch();
               }
             }}
           />
+          <div className="ml-1 w-1/4 flex justify-center items-center">
+            {loading ? (
+              <l-bouncy size="35" speed="1.75" color={colors.teal[600]} />
+            ) : (
+              <button
+                className="bg-teal-500 text-white text-sm h-10 py-3 ml-1 flex items-center rounded-md hover:bg-teal-600"
+                onClick={handleSearch}
+              >
+                Search
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="divide-y divide-gray-200">

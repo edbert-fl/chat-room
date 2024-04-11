@@ -23,6 +23,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   let prevAuthorID: number | null = null;
   const currUser = useContext(UserContext);
   const [messageDraft, setMessageDraft] = useState<string>("");
+  const [chatLoading, setChatLoading] = useState(false);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     };
 
     newWs.onmessage = (event) => {
-      const newMessage = JSON.parse(event.data)
+      const newMessage = JSON.parse(event.data);
       console.log(newMessage);
       setMessages((prevMessages) => [...prevMessages, newMessage]);
     };
@@ -53,7 +54,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       newWs.close();
     };
   }, [currUser, setMessages]);
-
 
   const sendMessage = (messageDraftContent) => {
     fetch(`${process.env.REACT_APP_HEROKU_URL}/message/send`, {
@@ -102,49 +102,89 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               className="flex-1 overflow-y-auto  mb-5"
               style={{ maxHeight: "calc(100vh - 14rem)" }}
             >
-              {messages.map((message, index) => {
-                const showAuthor = message.sender.id !== prevAuthorID; // Check if the author is different from the previous one
-                prevAuthorID = message.sender.id; // Update the previous author
+              {chatLoading ? (
+                <div className="animate-pulse p-1 flex h-10 w-4/5 space-x-4">
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="grid grid-cols-4 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-2"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                    </div>
+                    <div className="pt-5 grid grid-cols-5 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                    </div>
+                    <div className="grid grid-cols-6 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                    </div>
+                    <div className="pt-5 grid grid-cols-4 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-2"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                    </div>
+                    <div className="pt-5 grid grid-cols-5 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                    </div>
+                    <div className="grid grid-cols-6 gap-1">
+                      <div className="h-5 bg-gray-200 rounded col-span-1"></div>
+                      <div className="h-5 bg-gray-200 rounded col-span-3"></div>
+                    </div>
+                  </div>
 
-                return (
-                  <div key={index}>
-                    {showAuthor && (
+                </div>
+              ) : (
+                messages.map((message, index) => {
+                  const showAuthor = message.sender.id !== prevAuthorID; // Check if the author is different from the previous one
+                  prevAuthorID = message.sender.id; // Update the previous author
+
+                  return (
+                    <div key={index}>
+                      {showAuthor && (
+                        <div
+                          key={index + "_author"}
+                          className={`text-md mb-1 mt-4 font-bold ${
+                            currUser!.id === message.sender.id
+                              ? "text-teal-500"
+                              : "text-violet-500"
+                          }`}
+                        >
+                          {currUser!.id === message.sender.id
+                            ? `${message.sender.username} (You)`
+                            : `${message.sender.username}`}{" "}
+                          <span className={`text-gray-500 text-xs font-medium`}>
+                            {new Date(message.sentAt).toLocaleString("en-US", {
+                              month: "2-digit",
+                              day: "2-digit",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </span>
+                        </div>
+                      )}
                       <div
-                        key={index + "_author"}
-                        className={`text-md mb-1 mt-4 font-bold ${
-                          currUser!.id === message.sender.id
-                            ? "text-teal-500"
-                            : "text-violet-500"
-                        }`}
+                        key={index + "_content"}
+                        className={"flex items-start justify-start"}
                       >
-                        {currUser!.id === message.sender.id
-                          ? `${message.sender.username} (You)`
-                          : `${message.sender.username}`}{" "}
-                        <span className={`text-gray-500 text-xs font-medium`}>
-                          {new Date(message.sentAt).toLocaleString("en-US", {
-                            month: "2-digit",
-                            day: "2-digit",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      key={index + "_content"}
-                      className={"flex items-start justify-start"}
-                    >
-                      <div className={`rounded-lg max-w-3xl break-words gray`}>
-                        <div className="text-sm text-gray-700">
-                          {message.message}
+                        <div
+                          className={`rounded-lg max-w-3xl break-words gray`}
+                        >
+                          <div className="text-sm text-gray-700">
+                            {message.message}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
             <div className="bg-gray-200 rounded-lg flex items-center justify-between p-6 h-28">
               <input
@@ -155,7 +195,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 onChange={(e) => setMessageDraft(e.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
-                    sendMessage(messageDraft)
+                    sendMessage(messageDraft);
+                    setMessageDraft("");
                   }
                 }}
               />

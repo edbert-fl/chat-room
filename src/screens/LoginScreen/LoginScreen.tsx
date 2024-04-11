@@ -44,25 +44,20 @@ export const LoginScreen = () => {
           id: response.data.user.id,
           username: response.data.user.username,
           email: response.data.user.email,
-          created_at: response.data.user.created_at
+          createdAt: response.data.user.created_at
         });
-        
+
         setLoading(false);
         navigation("/");
       } else {
-        setError(`Error ${response.status} ${response.data.message}`);
+        setError(`${response.data.error}`);
       }
     } catch (error) {
       if (error.response) {
-        setError(`${error.response.mes}`);
-        if (error.response.status === 401) {
-          setError("Invalid credentials.");
-        } else if (error.response.status === 404) {
-          setError("User not found.");
-        } else if (error.response.status === 400) {
-          setError("Please input username and password.");
-        } else {
+        if (error.response.status === undefined) {
           setError("An unexpected error occurred.");
+        } else {
+          setError(`${error.response.data.error}`);
         }
         return;
       } else {
@@ -74,7 +69,7 @@ export const LoginScreen = () => {
   };
 
   return (
-    <div className="login-form shadow-md p-20 rounded-lg">
+    <div className="login-form shadow-md p-20 min-w-80 rounded-lg">
       <h1 className="text-2xl text-center mb-4 text-teal-600">Login</h1>
       <div className="mb-5">
         <input
@@ -83,6 +78,11 @@ export const LoginScreen = () => {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-400 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleLogin()
+            }
+          }}
         />
         <input
           type="password"
@@ -90,6 +90,11 @@ export const LoginScreen = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              handleLogin()
+            }
+          }}
         />
       </div>
       <div className="flex justify-center align-items-center w-full h-20">

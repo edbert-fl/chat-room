@@ -6,11 +6,11 @@ import RegisterScreen from "../screens/RegisterScreen/RegisterScreen.tsx";
 import HomeScreen from "../screens/HomeScreen/HomeScreen.tsx";
 
 const AppRouter = () => {
-  const user = useContext(UserContext);
+  const currUser = useContext(UserContext);
   return (
     <Router>
       <Routes>
-        {user ? (
+        {currUser ? (
           <Route path="/" element={<HomeScreen />} />
         ) : (
           <>

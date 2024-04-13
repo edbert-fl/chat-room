@@ -1,9 +1,9 @@
 import React, { useContext } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { UserContext } from "../context/UserContextProvider.tsx";
-import LoginScreen from "../screens/LoginScreen/LoginScreen.tsx";
-import RegisterScreen from "../screens/RegisterScreen/RegisterScreen.tsx";
-import HomeScreen from "../screens/HomeScreen/HomeScreen.tsx";
+import LoginScreen from "../screens/LoginScreen.tsx";
+import RegisterScreen from "../screens/RegisterScreen.tsx";
+import HomeScreen from "../screens/HomeScreen.tsx";
 
 const AppRouter = () => {
   const currUser = useContext(UserContext);

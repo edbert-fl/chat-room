@@ -27,6 +27,7 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
 
   useEffect(() => {
     getFriendRequests();
+    // eslint-disable-next-line
   }, []);
 
   const sendFriendRequest = (requestedUsername) => {
@@ -47,7 +48,11 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       .then((response) => {
         if (!response.ok) {
           return response.json().then((data) => {
-            triggerNotification(false, `${data.error}`);
+            if (data.error) {
+              triggerNotification(false, `${data.error}`);
+            } else {
+              triggerNotification(false, `Error sending friend request`);
+            }
           });
         }
         return response.json();

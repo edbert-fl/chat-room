@@ -1,14 +1,14 @@
 import React, { useContext, useState } from "react";
-import { Message, User } from "../../utils/Types.tsx";
-import { FriendsList } from "../../components/FriendsList.tsx";
-import { FriendsSearch } from "../../components/FriendsSearch.tsx";
-import { Notification } from "../../utils/Types.tsx";
-import NotificationStack from "../../components/NotificationStack.tsx";
-import { ChatRoom } from "../../components/ChatRoom.tsx";
+import { Message, User } from "../utils/Types.tsx";
+import { FriendsList } from "../components/FriendsList.tsx";
+import { FriendsSearch } from "../components/FriendsSearch.tsx";
+import { Notification } from "../utils/Types.tsx";
+import NotificationStack from "../components/NotificationStack.tsx";
+import { ChatRoom } from "../components/ChatRoom.tsx";
 import {
   TokenContext,
   UserContext,
-} from "../../context/UserContextProvider.tsx";
+} from "../context/UserContextProvider.tsx";
 
 const HomeScreen = () => {
   const currUser = useContext(UserContext);

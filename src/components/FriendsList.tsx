@@ -29,6 +29,7 @@ export const FriendsList: React.FC<FriendsListProps> = ({
     setFriendListLoading(true);
     getFriends();
     setFriendListLoading(false);
+    // eslint-disable-next-line
   }, []);
 
   const handleLogout = () => {

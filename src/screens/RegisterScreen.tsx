@@ -1,13 +1,11 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "./RegisterScreen.css";
 import axios from "axios";
 import * as crypto from "crypto-js";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
-import Cookies from "js-cookie";
 
-import { UserUpdateContext } from "../../context/UserContextProvider.tsx";
+import { TokenUpdateContext, UserUpdateContext } from "../context/UserContextProvider.tsx";
 
 export const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -18,6 +16,7 @@ export const RegisterScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const setCurrUser = useContext(UserUpdateContext);
+  const setToken = useContext(TokenUpdateContext);
 
   const navigation = useNavigate();
 
@@ -74,6 +73,8 @@ export const RegisterScreen = () => {
           createdAt: response.data.user.created_at
         });
 
+        setToken(response.data.token);
+
         navigation("/");
       } else {
         setError(`${response.data.error}`)
@@ -91,7 +92,7 @@ export const RegisterScreen = () => {
   };
 
   return (
-    <div className="register-form p-8 min-w-80 rounded-lg shadow-lg w-full">
+    <div className="bg-white p-10 min-w-80 w-1/4 rounded-lg shadow-lg">
       <h1 className="text-2xl text-center mb-4 text-teal-600">Register</h1>
       <div className="mb-5">
         <input

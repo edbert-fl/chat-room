@@ -19,6 +19,7 @@ const NotificationStack: React.FC<NotificationStackProps> = ({
       }, 5000);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line
   }, [notifications]);
 
   return (

@@ -1,12 +1,9 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TokenUpdateContext, UserUpdateContext } from "../../context/UserContextProvider.tsx";
-import "./LoginScreen.css";
+import { TokenUpdateContext, UserUpdateContext } from "../context/UserContextProvider.tsx";
 import axios from "axios";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
-import Cookies from 'js-cookie';
-
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState("");
@@ -74,7 +71,7 @@ export const LoginScreen = () => {
   };
 
   return (
-    <div className="login-form shadow-md p-20 min-w-80 rounded-lg">
+    <div className="shadow-md p-10 min-w-80 w-1/4 rounded-lg mb-20 bg-white ">
       <h1 className="text-2xl text-center mb-4 text-teal-600">Login</h1>
       <div className="mb-5">
         <input

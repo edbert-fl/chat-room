@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Message, User } from "../utils/Types";
-import { UserContext } from "../context/UserContextProvider.tsx";
+import { TokenContext, UserContext } from "../context/UserContextProvider.tsx";
 import RandomEmoji from "./RandomEmoji.tsx";
 
 interface ChatRoomProps {
@@ -22,6 +22,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 }) => {
   let prevAuthorID: number | null = null;
   const currUser = useContext(UserContext);
+  const token = useContext(TokenContext);
   const [messageDraft, setMessageDraft] = useState<string>("");
   const [chatLoading, setChatLoading] = useState(false);
   const [ws, setWs] = useState<WebSocket | null>(null);
@@ -60,6 +61,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify({
         sender_id: currUser!.id,
@@ -136,7 +140,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       <div className="h-5 bg-gray-200 rounded col-span-3"></div>
                     </div>
                   </div>
-
                 </div>
               ) : (
                 messages.map((message, index) => {

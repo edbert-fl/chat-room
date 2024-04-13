@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { IoArrowBack } from "react-icons/io5";
 import colors from "tailwindcss/colors";
 import { LoadingRequest } from "../utils/Types";
-import { UserContext } from "../context/UserContextProvider.tsx";
+import { TokenContext, UserContext } from "../context/UserContextProvider.tsx";
 import { bouncy } from "ldrs";
 import RandomEmoji from "./RandomEmoji.tsx";
 
@@ -21,6 +21,7 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
   const currUser = useContext(UserContext);
+  const token = useContext(TokenContext);
 
   bouncy.register();
 
@@ -34,6 +35,9 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify({
         sender_id: currUser!.id,
@@ -42,19 +46,24 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Network response was not ok");
+          return response.json().then((data) => {
+            triggerNotification(false, `${data.error}`);
+          });
         }
         return response.json();
       })
       .then((data) => {
-        console.log(JSON.stringify(data));
+        if (!data) {
+          return;
+        }
         triggerNotification(true, `Friend request sent`);
         getFriendRequests();
       })
       .catch((error) => {
-        triggerNotification(false, `Error sending friend request`);
+        console.error("Network error:", error);
+        triggerNotification(false, "Network error");
       });
-      setLoading(false);
+    setLoading(false);
   };
 
   const getFriendRequests = () => {
@@ -64,6 +73,9 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify(requestData),
     })
@@ -80,7 +92,6 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
             loading: false,
           })
         );
-        console.log(loadingRequests);
         setFriendRequests(loadingRequests);
       })
       .catch((error) => {
@@ -105,6 +116,9 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify({ request_id: request.id }),
     })
@@ -115,7 +129,6 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
         return response.json();
       })
       .then((data) => {
-        console.log(data);
         triggerNotification(true, `Friend request accepted`);
         setFriendRequests((prevRequests) =>
           prevRequests.filter((req) => req.request.id !== request.id)
@@ -148,6 +161,9 @@ export const FriendsSearch: React.FC<FriendsSearchProps> = ({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify({ request_id: request.id }),
     })

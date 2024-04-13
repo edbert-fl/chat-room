@@ -5,10 +5,14 @@ import { FriendsSearch } from "../../components/FriendsSearch.tsx";
 import { Notification } from "../../utils/Types.tsx";
 import NotificationStack from "../../components/NotificationStack.tsx";
 import { ChatRoom } from "../../components/ChatRoom.tsx";
-import { UserContext } from "../../context/UserContextProvider.tsx";
+import {
+  TokenContext,
+  UserContext,
+} from "../../context/UserContextProvider.tsx";
 
 const HomeScreen = () => {
   const currUser = useContext(UserContext);
+  const token = useContext(TokenContext);
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [friendSearchIsOpen, setFriendSearchIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -41,14 +45,13 @@ const HomeScreen = () => {
   };
 
   const getMessages = (friend: User) => {
-    console.log({
-      user_id: currUser!.id,
-      friend_id: friend!.id,
-    });
     fetch(`${process.env.REACT_APP_HEROKU_URL}/message/get`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify({
         user_id: currUser!.id,
@@ -78,6 +81,9 @@ const HomeScreen = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
       },
       body: JSON.stringify(requestData),
     })

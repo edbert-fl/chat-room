@@ -1,10 +1,12 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserUpdateContext } from "../../context/UserContextProvider.tsx";
+import { TokenUpdateContext, UserUpdateContext } from "../../context/UserContextProvider.tsx";
 import "./LoginScreen.css";
 import axios from "axios";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
+import Cookies from 'js-cookie';
+
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState("");
@@ -15,6 +17,7 @@ export const LoginScreen = () => {
   const navigation = useNavigate();
 
   const setCurrUser = useContext(UserUpdateContext);
+  const setToken = useContext(TokenUpdateContext);
 
   // Activity Indicator
   bouncy.register();
@@ -46,6 +49,8 @@ export const LoginScreen = () => {
           email: response.data.user.email,
           createdAt: response.data.user.created_at
         });
+
+        setToken(response.data.token);
 
         setLoading(false);
         navigation("/");

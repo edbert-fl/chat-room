@@ -5,6 +5,7 @@ import axios from "axios";
 import * as crypto from "crypto-js";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
+import Cookies from "js-cookie";
 
 import { UserUpdateContext } from "../../context/UserContextProvider.tsx";
 
@@ -51,6 +52,8 @@ export const RegisterScreen = () => {
       const hashedPassword = crypto.SHA256(password + salt);
       const hashedPasswordString = hashedPassword.toString(crypto.enc.Base64);
 
+
+
       const response = await axios.post(
         `${process.env.REACT_APP_HEROKU_URL}/user/register`,
         {
@@ -60,6 +63,7 @@ export const RegisterScreen = () => {
           hashedPassword: hashedPasswordString,
         }
       );
+
       if (response.status === 200) {
         setLoading(false);
 

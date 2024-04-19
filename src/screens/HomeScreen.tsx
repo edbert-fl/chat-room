@@ -5,23 +5,63 @@ import { FriendsSearch } from "../components/FriendsSearch.tsx";
 import { Notification } from "../utils/Types.tsx";
 import NotificationStack from "../components/NotificationStack.tsx";
 import { ChatRoom } from "../components/ChatRoom.tsx";
-import {
-  TokenContext,
-  UserContext,
-} from "../context/UserContextProvider.tsx";
+import { TokenContext, UserContext } from "../context/UserContextProvider.tsx";
+import { WebSocketContext } from "../context/WebSocketContextProvider.tsx";
+import WS_STATUS from "../utils/WSStatus.tsx";
+import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
+import { pkdf2DecryptMessage, stringToBuffer } from "../utils/PKDFCrypto.tsx";
+import { exportPublicKeyToJWK, generateKeyPair } from "../utils/WSCrypto.tsx";
 
 const HomeScreen = () => {
   const currUser = useContext(UserContext);
   const token = useContext(TokenContext);
+  const ws = useContext(WebSocketContext);
+  const { PKDF2Key, addConnection } = useContext(
+    ChatRoomConnectionContext
+  );
+
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [friendSearchIsOpen, setFriendSearchIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // Function to handle friend selection
-  const handleFriendSelect = (friend) => {
+  const handleFriendSelect = async (friend: User) => {
     setSelectedFriend(friend);
+
+    const generatedKeyPair = await generateKeyPair();
+    const myPublicKey = generatedKeyPair.publicKey;
+
+    const myJWKPublicKey = await exportPublicKeyToJWK(myPublicKey);
+
+    const websocketMessage = {
+      type: WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY,
+      data: {
+        senderID: currUser!.id,
+        receiverID: friend.id,
+        jwkPublicKey: myJWKPublicKey,
+      },
+    };
+
+    const newConnectionRequest = {
+      friendID: friend.id,
+      publicKey: null,
+      privateKey: generatedKeyPair.privateKey
+    }
+    console.log("00", newConnectionRequest)
+    
+    addConnection(newConnectionRequest)
+
+    if (ws) {
+      setTimeout(async () => {
+        ws.send(JSON.stringify(websocketMessage));
+      }, 500);
+    } else {
+      console.error("Websocket is not connected!");
+    }
+
+    // Send inactivity signal to other clients
+
     setMessages([]);
     getMessages(friend);
   };
@@ -64,7 +104,18 @@ const HomeScreen = () => {
         }
         return response.json();
       })
-      .then((data) => {
+      .then(async (data) => {
+        for (const message of data.messages) {
+          const encryptedMessage = {
+            iv: stringToBuffer(message.iv),
+            ciphertext: stringToBuffer(message.message).buffer,
+          };
+          const decryptedMessage = await pkdf2DecryptMessage(
+            encryptedMessage,
+            PKDF2Key
+          );
+          message.message = decryptedMessage!;
+        }
         setMessages(data.messages);
       })
       .catch((error) => {

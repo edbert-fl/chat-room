@@ -5,7 +5,12 @@ import * as crypto from "crypto-js";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
 
-import { TokenUpdateContext, UserUpdateContext } from "../context/UserContextProvider.tsx";
+import {
+  TokenUpdateContext,
+  UserUpdateContext,
+} from "../context/UserContextProvider.tsx";
+import { pkdf2DeriveKeysFromPassword } from "../utils/PKDFCrypto.tsx";
+import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
 
 export const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -17,6 +22,7 @@ export const RegisterScreen = () => {
 
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
+  const { PKDF2Key, setPKDF2Key } = useContext(ChatRoomConnectionContext);
 
   const navigation = useNavigate();
 
@@ -24,7 +30,6 @@ export const RegisterScreen = () => {
   bouncy.register();
 
   const handleRegister = async () => {
-
     if (username === null || username.length === 0) {
       setError("Please enter a username");
       return;
@@ -51,7 +56,8 @@ export const RegisterScreen = () => {
       const hashedPassword = crypto.SHA256(password + salt);
       const hashedPasswordString = hashedPassword.toString(crypto.enc.Base64);
 
-
+      const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, salt);
+      setPKDF2Key(pkdf2Key);
 
       const response = await axios.post(
         `${process.env.REACT_APP_HEROKU_URL}/user/register`,
@@ -70,18 +76,18 @@ export const RegisterScreen = () => {
           id: response.data.user.id,
           username: response.data.user.username,
           email: response.data.user.email,
-          createdAt: response.data.user.created_at
+          createdAt: response.data.user.created_at,
         });
 
         setToken(response.data.token);
 
         navigation("/");
       } else {
-        setError(`${response.data.error}`)
+        setError(`${response.data.error}`);
       }
     } catch (error) {
       if (error.response) {
-        setError(`${error.response.data.error}`)
+        setError(`${error.response.data.error}`);
         return;
       } else {
         setError("Network error.");
@@ -103,7 +109,7 @@ export const RegisterScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-400 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleRegister()
+              handleRegister();
             }
           }}
         />
@@ -115,7 +121,7 @@ export const RegisterScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-400 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleRegister()
+              handleRegister();
             }
           }}
         />
@@ -127,7 +133,7 @@ export const RegisterScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleRegister()
+              handleRegister();
             }
           }}
         />
@@ -139,7 +145,7 @@ export const RegisterScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleRegister()
+              handleRegister();
             }
           }}
         />

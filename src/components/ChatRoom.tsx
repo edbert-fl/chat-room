@@ -8,6 +8,22 @@ import React, {
 import { Message, User } from "../utils/Types";
 import { TokenContext, UserContext } from "../context/UserContextProvider.tsx";
 import RandomEmoji from "./RandomEmoji.tsx";
+import WS_STATUS from "../utils/WSStatus.tsx";
+import {
+  UpdateWebSocketContext,
+  WebSocketContext,
+} from "../context/WebSocketContextProvider.tsx";
+import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
+import { bufferToString, pkdf2EncryptMessage } from "../utils/PKDFCrypto.tsx";
+import {
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+  exportPublicKeyToJWK,
+  generateKeyPair,
+  importPublicKeyFromJWK,
+  wsDecryptMessage,
+  wsEncryptMessage,
+} from "../utils/WSCrypto.tsx";
 
 interface ChatRoomProps {
   selectedFriend: User | null;
@@ -21,11 +37,23 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   setMessages,
 }) => {
   let prevAuthorID: number | null = null;
+
   const currUser = useContext(UserContext);
   const token = useContext(TokenContext);
+  const ws = useContext(WebSocketContext);
+  const setWs = useContext(UpdateWebSocketContext);
+
+  const {
+    addConnection,
+    PKDF2Key,
+    chatRoomConnections,
+    getPublicKey,
+    getPrivateKey,
+  } = useContext(ChatRoomConnectionContext);
+
   const [messageDraft, setMessageDraft] = useState<string>("");
+  // eslint-disable-next-line
   const [chatLoading, setChatLoading] = useState(false);
-  const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
     const newWs = new WebSocket(
@@ -34,19 +62,93 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       }`
     );
 
-    newWs.onopen = () => {
-      console.log("WebSocket connection opened");
+    newWs.onopen = () => {};
+
+    newWs.onmessage = async (event) => {
+      const websocketMessage = JSON.parse(event.data);
+      console.log(websocketMessage);
+
+      if (websocketMessage.type === WS_STATUS.MESSAGE_TRANSFER) {
+        try {
+          const myPrivateKey = getPrivateKey(websocketMessage.data.sender.id);
+
+          if (!myPrivateKey) {
+            console.error("Private key for this conversation not found");
+            console.log(myPrivateKey);
+          }
+
+          const encryptedMessageBuffer = base64ToArrayBuffer(
+            websocketMessage.data.message
+          );
+
+          console.log("EMS", encryptedMessageBuffer);
+          const decryptedMessage = await wsDecryptMessage(
+            encryptedMessageBuffer,
+            myPrivateKey
+          );
+          const message = {
+            ...websocketMessage.data,
+            message: decryptedMessage,
+          };
+          console.log("DM", message);
+        } catch (error) {
+          console.error("Error receiving and decrypting message:", error);
+        }
+      } else if (
+        websocketMessage.type === WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY
+      ) {
+        const generatedKeyPair = await generateKeyPair();
+
+        const newConnection = {
+          friendID: websocketMessage.data.senderID,
+          publicKey: await importPublicKeyFromJWK(
+            websocketMessage.data.jwkPublicKey
+          ),
+          privateKey: generatedKeyPair.privateKey,
+        };
+        addConnection(newConnection);
+
+        // Timeout to allow state to update
+        setTimeout(async () => {
+          const myPublicKey = generatedKeyPair.publicKey;
+
+          const myJWKPublicKey = await exportPublicKeyToJWK(myPublicKey);
+          const newConnection = {
+            type: WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY,
+            data: {
+              senderID: currUser!.id,
+              receiverID: websocketMessage.data.senderID,
+              jwkPublicKey: myJWKPublicKey,
+            },
+          };
+          console.log("11", newConnection);
+          newWs.send(JSON.stringify(newConnection));
+        }, 500);
+      } else if (
+        websocketMessage.type === WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY
+      ) {
+        const previouslyStoredPrivateKey = await getPrivateKey(
+          websocketMessage.data.senderID
+        );
+          
+        console.log(chatRoomConnections);
+        if (!previouslyStoredPrivateKey) {
+          console.error("Previous private key has gone missing");
+          return;
+        }
+        const newConnection = {
+          friendID: websocketMessage.data.senderID,
+          publicKey: await importPublicKeyFromJWK(
+            websocketMessage.data.jwkPublicKey
+          ),
+          privateKey: previouslyStoredPrivateKey!,
+        };
+        console.log("22", newConnection);
+        addConnection(newConnection);
+      }
     };
 
-    newWs.onmessage = (event) => {
-      const newMessage = JSON.parse(event.data);
-      console.log(newMessage);
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-    };
-
-    newWs.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
+    newWs.onclose = () => {};
 
     setWs(newWs);
 
@@ -54,9 +156,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     return () => {
       newWs.close();
     };
+    // eslint-disable-next-line
   }, [currUser, setMessages]);
 
-  const sendMessage = (messageDraftContent) => {
+  const sendMessage = async (messageDraftContent) => {
+    const pkdf2EncryptedData = await pkdf2EncryptMessage(
+      messageDraftContent,
+      PKDF2Key
+    );
+
+    const ciphertext = bufferToString(pkdf2EncryptedData.ciphertext);
+    const ivString = bufferToString(pkdf2EncryptedData.iv);
+
     fetch(`${process.env.REACT_APP_HEROKU_URL}/message/send`, {
       method: "POST",
       headers: {
@@ -68,7 +179,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       body: JSON.stringify({
         sender_id: currUser!.id,
         receiver_id: selectedFriend!.id,
-        message: messageDraftContent,
+        message: ciphertext,
+        iv: ivString,
       }),
     })
       .then((response) => {
@@ -77,12 +189,35 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         }
         return response.json();
       })
-      .then((data) => {
+      .then(async (data) => {
         if (data) {
-          setMessages((prevMessages) => [...prevMessages, data.message]);
+          const friendsPublicKey = getPublicKey(data.message.receiver.id);
+
+          const encryptedMessageBuffer = await wsEncryptMessage(
+            messageDraftContent,
+            friendsPublicKey
+          );
+
+          const encryptedMessageString = arrayBufferToBase64(
+            encryptedMessageBuffer
+          );
+
+          const websocketMessage = {
+            type: WS_STATUS.MESSAGE_TRANSFER,
+            data: {
+              id: data.message.id,
+              message: encryptedMessageString,
+              sender: data.message.sender,
+              receiver: data.message.receiver,
+              sentAt: data.message.sentAt,
+            },
+          };
+
           if (ws) {
-            ws.send(JSON.stringify(data.message));
+            ws.send(JSON.stringify(websocketMessage));
           }
+
+          console.log(chatRoomConnections);
         }
         setMessageDraft("");
       })

@@ -30,6 +30,18 @@ export interface Notification {
 export interface LoadingRequest {
     request: FriendRequest;
     loading: boolean;
-  }
+}
+
+export interface encryptedData {
+    encryptedData: ArrayBuffer;
+    iv: Uint8Array;
+    hmac: ArrayBuffer;
+}
+
+export interface ChatRoomConnection {
+    friendID: number,
+    publicKey: CryptoKey | null,
+    privateKey: CryptoKey
+}
 
 export const dateTimeFormat = "MM/DD/YYYY h:mm A"

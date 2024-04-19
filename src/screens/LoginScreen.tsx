@@ -1,9 +1,14 @@
 import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TokenUpdateContext, UserUpdateContext } from "../context/UserContextProvider.tsx";
+import {
+  TokenUpdateContext,
+  UserUpdateContext,
+} from "../context/UserContextProvider.tsx";
 import axios from "axios";
 import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
+import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
+import { pkdf2DeriveKeysFromPassword } from "../utils/PKDFCrypto.tsx";
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState("");
@@ -15,6 +20,7 @@ export const LoginScreen = () => {
 
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
+  const { setPKDF2Key } = useContext(ChatRoomConnectionContext);
 
   // Activity Indicator
   bouncy.register();
@@ -44,10 +50,15 @@ export const LoginScreen = () => {
           id: response.data.user.id,
           username: response.data.user.username,
           email: response.data.user.email,
-          createdAt: response.data.user.created_at
+          createdAt: response.data.user.created_at,
         });
 
         setToken(response.data.token);
+        console.log(response.data);
+
+        const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, response.data.user.salt);
+        setPKDF2Key(pkdf2Key);
+        console.log(pkdf2Key);
 
         setLoading(false);
         navigation("/");
@@ -66,7 +77,7 @@ export const LoginScreen = () => {
         setError("Network error.");
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
@@ -82,7 +93,7 @@ export const LoginScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-400 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleLogin()
+              handleLogin();
             }
           }}
         />
@@ -94,7 +105,7 @@ export const LoginScreen = () => {
           className="w-full px-3 py-2 mb-4 placeholder-gray-500 text-gray-700 rounded-md bg-gray-100 focus:outline focus:outline-teal-300"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              handleLogin()
+              handleLogin();
             }
           }}
         />

@@ -9,7 +9,7 @@ import { UserUpdateContext } from "../context/UserContextProvider.tsx";
 
 interface FriendsListProps {
   selectedFriend: User | null;
-  handleFriendSelect: (friend: User | null) => void;
+  handleFriendSelect: (friend: User) => void;
   toggleFriendSearch: () => void;
   friends: User[];
   getFriends: () => void;

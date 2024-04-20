@@ -4,28 +4,35 @@ import React, {
   ReactNode,
   SetStateAction,
   Dispatch,
+  useEffect,
 } from "react";
 import { ChatRoomConnection } from "../utils/Types";
+import Cookies from "js-cookie";
+import { pbkdf2KeyToString, stringToPbkdf2Key } from "../utils/PKDFCrypto.tsx";
 
 interface EncryptionContextProviderProps {
   children: ReactNode;
 }
 
 export interface ChatRoomConnectionContextType {
-  chatRoomConnections: ChatRoomConnection[];
-  addConnection: (connection: ChatRoomConnection) => void;
-  getPublicKey: (friendID: number) => CryptoKey | null;
-  getPrivateKey: (friendID: number) => CryptoKey | null;
+  publicKey: CryptoKey | null;
+  setPublicKey: Dispatch<SetStateAction<CryptoKey | null>>;
+  friendsPublicKey: CryptoKey | null;
+  setFriendsPublicKey: Dispatch<SetStateAction<CryptoKey | null>>;
+  privateKey: CryptoKey | null;
+  setPrivateKey: Dispatch<SetStateAction<CryptoKey | null>>;
   PKDF2Key: CryptoKey | null;
   setPKDF2Key: Dispatch<SetStateAction<CryptoKey | null>>;
 }
 
 export const ChatRoomConnectionContext =
   createContext<ChatRoomConnectionContextType>({
-    chatRoomConnections: [],
-    addConnection: () => {},
-    getPublicKey: () => null,
-    getPrivateKey: () => null,
+    publicKey: null,
+    setPublicKey: () => {},
+    friendsPublicKey: null,
+    setFriendsPublicKey: () => {},
+    privateKey: null,
+    setPrivateKey: () => {},
     PKDF2Key: null,
     setPKDF2Key: () => {},
   });
@@ -33,49 +40,59 @@ export const ChatRoomConnectionContext =
 export const EncryptionContextProvider = ({
   children,
 }: EncryptionContextProviderProps) => {
-  const [chatRoomConnections, setChatRoomConnections] = useState<
-    ChatRoomConnection[]
-  >([]);
+  const [publicKey, setPublicKey] = useState<CryptoKey | null>(null);
+  const [friendsPublicKey, setFriendsPublicKey] = useState<CryptoKey | null>(null);
+  const [privateKey, setPrivateKey] = useState<CryptoKey | null>(null);
   const [PKDF2Key, setPKDF2Key] = useState<CryptoKey | null>(null);
 
-  const addConnection = (connection: ChatRoomConnection) => {
-    console.log("Adding Connection:", connection);
-    setTimeout(function delay() {
-      setChatRoomConnections((prevConnections) => {
-        console.log("Previous Connections:", prevConnections);
-        const existingIndex = prevConnections.findIndex(
-          (c) => c.friendID === connection.friendID
-        );
-        if (existingIndex !== -1) {
-          const updatedConnections = [...prevConnections];
-          updatedConnections[existingIndex] = connection;
-          return updatedConnections;
-        } else {
-          return [...prevConnections, connection];
-        }
-      });
-    });
-  };
+  useEffect(() => {
+    console.log("Public key has been set")
+  }, [setPublicKey])
 
-  const getPublicKey = (friendID: number) => {
-    const connection = chatRoomConnections.find(
-      (connection) => connection.friendID === friendID
-    );
-    return connection ? connection.publicKey : null;
-  };
+  useEffect(() => {
+    console.log("Friends' Public key has been set")
+  }, [setFriendsPublicKey])
 
-  const getPrivateKey = (friendID: number) => {
-    const connection = chatRoomConnections.find(
-      (connection) => connection.friendID === friendID
-    );
-    return connection ? connection.privateKey : null;
-  };
+  useEffect(() => {
+    console.log("Private key has been set")
+  }, [setPrivateKey])
 
+  useEffect(() => {
+    console.log("PBKDF2 key has been set")
+  }, [setPKDF2Key])
+
+  // useEffect(() => {
+  //   async function fetchKeyFromCookie() {
+  //     const pkdfKeyFromCookie = Cookies.get("PKDF2Key");
+  //     if (pkdfKeyFromCookie) {
+  //       const pkdfKey = await stringToPbkdf2Key(pkdfKeyFromCookie);
+  //       setPKDF2Key(pkdfKey);
+  //     }
+  //   }
+
+  //   fetchKeyFromCookie();
+  // }, []);
+
+  // useEffect(() => {
+  //   async function setKeyAsCookie() {
+  //     if (PKDF2Key) {
+  //       Cookies.set("PKDF2Key", await pbkdf2KeyToString(PKDF2Key), { expires: 1 });
+  //     } else {
+  //       Cookies.remove("PKDF2Key");
+  //     }
+  //   }
+
+  //   setKeyAsCookie();
+  // }, [PKDF2Key]);
+
+ 
   const contextValue: ChatRoomConnectionContextType = {
-    chatRoomConnections,
-    addConnection,
-    getPublicKey,
-    getPrivateKey,
+    publicKey,
+    setPublicKey,
+    friendsPublicKey,
+    setFriendsPublicKey,
+    privateKey,
+    setPrivateKey,
     PKDF2Key,
     setPKDF2Key,
   };

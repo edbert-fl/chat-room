@@ -9,6 +9,7 @@ import { bouncy } from "ldrs";
 import colors from "tailwindcss/colors";
 import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
 import { pkdf2DeriveKeysFromPassword } from "../utils/PKDFCrypto.tsx";
+import { generateKeyPair } from "../utils/WSCrypto.tsx";
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState("");
@@ -20,7 +21,14 @@ export const LoginScreen = () => {
 
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
-  const { setPKDF2Key } = useContext(ChatRoomConnectionContext);
+  const {
+    publicKey,
+    setPublicKey,
+    privateKey,
+    setPrivateKey,
+    PKDF2Key,
+    setPKDF2Key
+  } = useContext(ChatRoomConnectionContext);
 
   // Activity Indicator
   bouncy.register();
@@ -53,6 +61,11 @@ export const LoginScreen = () => {
           createdAt: response.data.user.created_at,
         });
 
+        const generatedKeyPair = await generateKeyPair();
+
+        setPrivateKey(generatedKeyPair.privateKey);
+        setPublicKey(generatedKeyPair.publicKey);
+        
         setToken(response.data.token);
         console.log(response.data);
 

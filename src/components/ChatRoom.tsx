@@ -19,7 +19,6 @@ import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
   exportPublicKeyToJWK,
-  generateKeyPair,
   importPublicKeyFromJWK,
   wsDecryptMessage,
   wsEncryptMessage,
@@ -44,11 +43,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const setWs = useContext(UpdateWebSocketContext);
 
   const {
-    addConnection,
+    publicKey,
+    setPublicKey,
+    friendsPublicKey,
+    setFriendsPublicKey,
+    privateKey,
+    setPrivateKey,
     PKDF2Key,
-    chatRoomConnections,
-    getPublicKey,
-    getPrivateKey,
+    setPKDF2Key,
   } = useContext(ChatRoomConnectionContext);
 
   const [messageDraft, setMessageDraft] = useState<string>("");
@@ -70,11 +72,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
       if (websocketMessage.type === WS_STATUS.MESSAGE_TRANSFER) {
         try {
-          const myPrivateKey = getPrivateKey(websocketMessage.data.sender.id);
-
-          if (!myPrivateKey) {
-            console.error("Private key for this conversation not found");
-            console.log(myPrivateKey);
+          if (!privateKey) {
+            console.error("Private key not generated");
+            return;
           }
 
           const encryptedMessageBuffer = base64ToArrayBuffer(
@@ -84,35 +84,30 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           console.log("EMS", encryptedMessageBuffer);
           const decryptedMessage = await wsDecryptMessage(
             encryptedMessageBuffer,
-            myPrivateKey
+            privateKey
           );
           const message = {
             ...websocketMessage.data,
             message: decryptedMessage,
           };
-          console.log("DM", message);
+
+          // Store message with my own pbkdf2 encryption
+          storeMessage(decryptedMessage);
+
+          setMessages((prevMessages) => [...prevMessages, message]);
         } catch (error) {
           console.error("Error receiving and decrypting message:", error);
         }
       } else if (
         websocketMessage.type === WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY
       ) {
-        const generatedKeyPair = await generateKeyPair();
-
-        const newConnection = {
-          friendID: websocketMessage.data.senderID,
-          publicKey: await importPublicKeyFromJWK(
-            websocketMessage.data.jwkPublicKey
-          ),
-          privateKey: generatedKeyPair.privateKey,
-        };
-        addConnection(newConnection);
+        setFriendsPublicKey(
+          await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
+        );
 
         // Timeout to allow state to update
         setTimeout(async () => {
-          const myPublicKey = generatedKeyPair.publicKey;
-
-          const myJWKPublicKey = await exportPublicKeyToJWK(myPublicKey);
+          const myJWKPublicKey = await exportPublicKeyToJWK(publicKey);
           const newConnection = {
             type: WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY,
             data: {
@@ -121,30 +116,15 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               jwkPublicKey: myJWKPublicKey,
             },
           };
-          console.log("11", newConnection);
+          console.log("Responding to request for public key", newConnection);
           newWs.send(JSON.stringify(newConnection));
         }, 500);
       } else if (
         websocketMessage.type === WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY
       ) {
-        const previouslyStoredPrivateKey = await getPrivateKey(
-          websocketMessage.data.senderID
+        setFriendsPublicKey(
+          await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
         );
-          
-        console.log(chatRoomConnections);
-        if (!previouslyStoredPrivateKey) {
-          console.error("Previous private key has gone missing");
-          return;
-        }
-        const newConnection = {
-          friendID: websocketMessage.data.senderID,
-          publicKey: await importPublicKeyFromJWK(
-            websocketMessage.data.jwkPublicKey
-          ),
-          privateKey: previouslyStoredPrivateKey!,
-        };
-        console.log("22", newConnection);
-        addConnection(newConnection);
       }
     };
 
@@ -191,7 +171,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       })
       .then(async (data) => {
         if (data) {
-          const friendsPublicKey = getPublicKey(data.message.receiver.id);
+          if (!friendsPublicKey) {
+            console.error("Could not send message");
+            return;
+          }
 
           const encryptedMessageBuffer = await wsEncryptMessage(
             messageDraftContent,
@@ -216,10 +199,63 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           if (ws) {
             ws.send(JSON.stringify(websocketMessage));
           }
-
-          console.log(chatRoomConnections);
         }
         setMessageDraft("");
+        const newLocallyDisplayedMessage = {
+          id: data.message.id,
+          message: messageDraft,
+          sender: data.message.sender,
+          receiver: data.message.receiver,
+          sentAt: data.message.sentAt,
+        }
+        setMessages((prevMessages) => [...prevMessages, newLocallyDisplayedMessage])
+      })
+      .catch((error) => {
+        console.error("Error sending message:", error.message);
+      });
+  };
+
+  const storeMessage = async (messageDraftContent) => {
+    const pkdf2EncryptedData = await pkdf2EncryptMessage(
+      messageDraftContent,
+      PKDF2Key
+    );
+
+    const ciphertext = bufferToString(pkdf2EncryptedData.ciphertext);
+    const ivString = bufferToString(pkdf2EncryptedData.iv);
+
+    console.log("String", JSON.stringify({
+      storer_id: currUser!.id,
+      sender_id: selectedFriend!.id,
+      receiver_id: currUser!.id,
+      message: ciphertext,
+      iv: ivString,
+    }))
+
+    fetch(`${process.env.REACT_APP_HEROKU_URL}/message/store`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        UserID: `${currUser!.id}`,
+        Email: `${currUser!.email}`,
+      },
+      body: JSON.stringify({
+        storer_id: currUser!.id,
+        sender_id: selectedFriend!.id,
+        receiver_id: currUser!.id,
+        message: ciphertext,
+        iv: ivString,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Message stored", data)
       })
       .catch((error) => {
         console.error("Error sending message:", error.message);
@@ -234,7 +270,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             <span className="text-[28px]">
               {<RandomEmoji id={selectedFriend.id} />}
             </span>{" "}
-            {selectedFriend.username}
+            {selectedFriend.username} {friendsPublicKey === null ? "❌" : "✅"}
           </h2>
           <div className="flex flex-col flex-1">
             <div

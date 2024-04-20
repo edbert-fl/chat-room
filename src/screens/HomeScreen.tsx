@@ -16,9 +16,14 @@ const HomeScreen = () => {
   const currUser = useContext(UserContext);
   const token = useContext(TokenContext);
   const ws = useContext(WebSocketContext);
-  const { PKDF2Key, addConnection } = useContext(
-    ChatRoomConnectionContext
-  );
+  const {
+    publicKey,
+    setPublicKey,
+    privateKey,
+    setPrivateKey,
+    PKDF2Key,
+    setPKDF2Key
+  } = useContext(ChatRoomConnectionContext);
 
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [friendSearchIsOpen, setFriendSearchIsOpen] = useState(false);
@@ -29,10 +34,7 @@ const HomeScreen = () => {
   const handleFriendSelect = async (friend: User) => {
     setSelectedFriend(friend);
 
-    const generatedKeyPair = await generateKeyPair();
-    const myPublicKey = generatedKeyPair.publicKey;
-
-    const myJWKPublicKey = await exportPublicKeyToJWK(myPublicKey);
+    const myJWKPublicKey = await exportPublicKeyToJWK(publicKey);
 
     const websocketMessage = {
       type: WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY,
@@ -42,15 +44,6 @@ const HomeScreen = () => {
         jwkPublicKey: myJWKPublicKey,
       },
     };
-
-    const newConnectionRequest = {
-      friendID: friend.id,
-      publicKey: null,
-      privateKey: generatedKeyPair.privateKey
-    }
-    console.log("00", newConnectionRequest)
-    
-    addConnection(newConnectionRequest)
 
     if (ws) {
       setTimeout(async () => {

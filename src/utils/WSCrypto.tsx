@@ -1,5 +1,6 @@
 const generateKeyPair = async () => {
-  return await crypto.subtle.generateKey(
+  // Generate the key pair
+  const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSA-OAEP",
       modulusLength: 2048,
@@ -9,9 +10,24 @@ const generateKeyPair = async () => {
     true,
     ["encrypt", "decrypt"]
   );
+
+  const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+  const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+
+  const publicKeyArray = new Uint8Array(publicKey);
+  const privateKeyArray = new Uint8Array(privateKey);
+
+  console.log("Key pair public key", publicKeyArray);
+  console.log("Key pair private key", privateKeyArray);
+
+  return keyPair;
 };
 
 const wsEncryptMessage = async (message, recipientPublicKey) => {
+  const publicKey = await crypto.subtle.exportKey("spki", recipientPublicKey);
+  const publicKeyArray = new Uint8Array(publicKey);
+  console.log("Public key when encrypting", publicKeyArray);
+
   const encryptedMessage = await crypto.subtle.encrypt(
     {
       name: "RSA-OAEP",
@@ -22,7 +38,17 @@ const wsEncryptMessage = async (message, recipientPublicKey) => {
   return encryptedMessage;
 };
 
-const wsDecryptMessage = async (encryptedMessage, recipientPrivateKey) => {
+const wsDecryptMessage = async (
+  encryptedMessage: ArrayBuffer,
+  recipientPrivateKey: CryptoKey
+) => {
+  const privateKey = await crypto.subtle.exportKey(
+    "pkcs8",
+    recipientPrivateKey
+  );
+  const privateKeyArray = new Uint8Array(privateKey);
+  console.log("Private key when decrypting", privateKeyArray);
+
   const decryptedMessage = await crypto.subtle.decrypt(
     {
       name: "RSA-OAEP",
@@ -52,15 +78,15 @@ const importPublicKeyFromJWK = async (exportedPublicKeyJWK) => {
   return publicKey;
 };
 
-const arrayBufferToBase64 = ( buffer ) => {
-  var binary = '';
-  var bytes = new Uint8Array( buffer );
+const arrayBufferToBase64 = (buffer) => {
+  var binary = "";
+  var bytes = new Uint8Array(buffer);
   var len = bytes.byteLength;
   for (var i = 0; i < len; i++) {
-      binary += String.fromCharCode( bytes[ i ] );
+    binary += String.fromCharCode(bytes[i]);
   }
-  return window.btoa( binary );
-}
+  return window.btoa(binary);
+};
 
 const base64ToArrayBuffer = (base64String) => {
   const binaryString = window.atob(base64String);
@@ -73,6 +99,7 @@ const base64ToArrayBuffer = (base64String) => {
 };
 
 const runDemo = async () => {
+  console.log("<---------------------------->")
   const recipientKeyPair = await generateKeyPair();
 
   const recipientPublicKey = recipientKeyPair.publicKey;
@@ -80,7 +107,6 @@ const runDemo = async () => {
   const recipientPrivateKey = recipientKeyPair.privateKey;
 
   const exportedPublicKey = await exportPublicKeyToJWK(recipientPublicKey);
-
   const importedPublicKey = await importPublicKeyFromJWK(exportedPublicKey);
 
   const messageToSend = "Hello, World!";

@@ -22,7 +22,7 @@ export const RegisterScreen = () => {
 
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
-  const { PKDF2Key, setPKDF2Key } = useContext(ChatRoomConnectionContext);
+  const { setPKDF2Key } = useContext(ChatRoomConnectionContext);
 
   const navigation = useNavigate();
 

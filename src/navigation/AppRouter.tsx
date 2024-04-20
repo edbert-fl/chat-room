@@ -4,13 +4,19 @@ import { UserContext } from "../context/UserContextProvider.tsx";
 import LoginScreen from "../screens/LoginScreen.tsx";
 import RegisterScreen from "../screens/RegisterScreen.tsx";
 import HomeScreen from "../screens/HomeScreen.tsx";
+import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
 
 const AppRouter = () => {
   const currUser = useContext(UserContext);
+  const {
+    publicKey,
+    privateKey,
+    PKDF2Key,
+  } = useContext(ChatRoomConnectionContext);
   return (
     <Router>
       <Routes>
-        {currUser ? (
+        {currUser && publicKey && privateKey && PKDF2Key ? (
           <Route path="/" element={<HomeScreen />} />
         ) : (
           <>

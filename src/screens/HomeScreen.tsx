@@ -16,10 +16,9 @@ const HomeScreen = () => {
   const currUser = useContext(UserContext);
   const token = useContext(TokenContext);
   const ws = useContext(WebSocketContext);
-  const {
-    publicKey,
-    PKDF2Key
-  } = useContext(ChatRoomConnectionContext);
+  const { publicKey, PKDF2Key, setFriendsPublicKey } = useContext(
+    ChatRoomConnectionContext
+  );
 
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [friendSearchIsOpen, setFriendSearchIsOpen] = useState(false);
@@ -29,6 +28,21 @@ const HomeScreen = () => {
 
   const handleFriendSelect = async (friend: User) => {
     setSelectedFriend(friend);
+    setFriendsPublicKey(null);
+
+    if (ws) {
+      if (selectedFriend) {
+        ws.send(
+          JSON.stringify({
+            type: WS_STATUS.REQUEST_TO_DELETE_PUBLIC_KEY,
+            data: {
+              senderID: currUser!.id,
+              receiverID: selectedFriend!.id,
+            },
+          })
+        );
+      }
+    }
 
     const myJWKPublicKey = await exportPublicKeyToJWK(publicKey);
 
@@ -98,7 +112,7 @@ const HomeScreen = () => {
           const encryptedMessage = {
             iv: stringToBuffer(message.iv),
             ciphertext: stringToBuffer(message.message).buffer,
-            hmac: message.hmac
+            hmac: message.hmac,
           };
           const decryptedMessage = await pkdf2DecryptMessage(
             encryptedMessage,

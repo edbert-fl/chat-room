@@ -20,6 +20,7 @@ import {
   arrayBufferToBase64,
   base64ToArrayBuffer,
   exportPublicKeyToJWK,
+  generateHMACKey,
   importPublicKeyFromJWK,
   wsDecryptMessage,
   wsEncryptMessage,
@@ -43,6 +44,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const ws = useContext(WebSocketContext);
   const setWs = useContext(UpdateWebSocketContext);
 
+  const scrollableDivRef = useRef<HTMLDivElement>(null);
+
   const {
     publicKey,
     friendsPublicKey,
@@ -56,20 +59,21 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const [chatLoading, setChatLoading] = useState(false);
 
   const prevSelectedFriend = useRef<User | null>(null);
-  
+
   useEffect(() => {
-    if (!ws) {
+    if (!ws || ws.readyState === ws.CLOSING || ws.readyState === ws.CLOSED) {
       const newWs = new WebSocket(
         `${process.env.REACT_APP_WEBSOCKET_SERVER as string}?userId=${
           currUser!.id
         }`
       );
 
-      newWs.onopen = () => {};
+      newWs.onopen = () => {
+        console.log("WebSocket connection established.");
+      };
 
       newWs.onmessage = async (event) => {
         const websocketMessage = JSON.parse(event.data);
-        console.log(websocketMessage);
 
         if (websocketMessage.type === WS_STATUS.MESSAGE_TRANSFER) {
           try {
@@ -81,10 +85,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             const encryptedMessageBuffer = base64ToArrayBuffer(
               websocketMessage.data.message
             );
+            const encryptedHMACKeyBuffer = base64ToArrayBuffer(
+              websocketMessage.data.hmacKey
+            );
+            const encryptedHMACBuffer = base64ToArrayBuffer(
+              websocketMessage.data.hmac
+            );
 
             const decryptedMessage = await wsDecryptMessage(
               encryptedMessageBuffer,
-              privateKey
+              privateKey,
+              encryptedHMACKeyBuffer,
+              encryptedHMACBuffer
             );
             const message = {
               ...websocketMessage.data,
@@ -124,16 +136,56 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           setFriendsPublicKey(
             await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
           );
+        } else if (
+          websocketMessage.type === WS_STATUS.REQUEST_TO_DELETE_PUBLIC_KEY
+        ) {
+          if (websocketMessage.data.senderID === prevSelectedFriend.current!.id) {
+            console.log(`Deleting ${prevSelectedFriend.current?.username} public key`);
+            setFriendsPublicKey(null);
+          }
         }
       };
 
-      newWs.onclose = () => {};
+      newWs.onclose = () => {
+        if (prevSelectedFriend.current) {
+          newWs.send(
+            JSON.stringify({
+              type: WS_STATUS.REQUEST_TO_DELETE_PUBLIC_KEY,
+              data: {
+                senderID: currUser!.id,
+                receiverID: prevSelectedFriend.current!.id,
+              },
+            })
+          );
+        }
+        console.log("WebSocket connection closed.");
+      };
+
+      newWs.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
 
       setWs(newWs);
 
       // Clean up WebSocket connection on unmount
       return () => {
-        newWs.close();
+        if (
+          newWs &&
+          newWs.readyState !== WebSocket.CLOSING &&
+          newWs.readyState !== WebSocket.CLOSED &&
+          selectedFriend
+        ) {
+          newWs.send(
+            JSON.stringify({
+              type: WS_STATUS.REQUEST_TO_DELETE_PUBLIC_KEY,
+              data: {
+                senderID: currUser!.id,
+                receiverID: selectedFriend!.id,
+              },
+            })
+          );
+          newWs!.close();
+        }
       };
     }
     // eslint-disable-next-line
@@ -141,7 +193,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   useEffect(() => {
     prevSelectedFriend.current = selectedFriend;
+    scrollToBottom();
   }, [selectedFriend]);
+
+  const scrollToBottom = () => {
+    if (scrollableDivRef.current) {
+      console.log("Scrolling to bottom");
+      const scrollableDiv = scrollableDivRef.current;
+      scrollableDiv.scrollTop = scrollableDiv.scrollHeight;
+    }
+  };
 
   const sendMessage = async (messageDraftContent) => {
     const pkdf2EncryptedData = await pkdf2EncryptMessage(
@@ -162,7 +223,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       },
       body: JSON.stringify({
         sender_id: currUser!.id,
-        receiver_id: selectedFriend!.id,
+        receiver_id: prevSelectedFriend.current!.id,
         message: ciphertext,
         iv: ivString,
         hmac: pkdf2EncryptedData.hmac,
@@ -181,23 +242,34 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             return;
           }
 
-          const encryptedMessageBuffer = await wsEncryptMessage(
+          const hmacKey = await generateHMACKey();
+
+          const encryptedMessage = await wsEncryptMessage(
             messageDraftContent,
-            friendsPublicKey
+            friendsPublicKey,
+            hmacKey
           );
 
-          const encryptedMessageString = arrayBufferToBase64(
-            encryptedMessageBuffer
+          const encryptedCiphertext = arrayBufferToBase64(
+            encryptedMessage.ciphertext
           );
+
+          const encryptedHMACKeyString = arrayBufferToBase64(
+            encryptedMessage.encryptedHMACKey
+          );
+
+          const encryptedHMAC = arrayBufferToBase64(encryptedMessage.hmac);
 
           const websocketMessage = {
             type: WS_STATUS.MESSAGE_TRANSFER,
             data: {
               id: data.message.id,
-              message: encryptedMessageString,
+              message: encryptedCiphertext,
               sender: data.message.sender,
               receiver: data.message.receiver,
               sentAt: data.message.sentAt,
+              hmac: encryptedHMAC,
+              hmacKey: encryptedHMACKeyString,
             },
           };
 
@@ -232,19 +304,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     const ciphertext = bufferToString(pkdf2EncryptedData.ciphertext);
     const ivString = bufferToString(pkdf2EncryptedData.iv);
 
-    console.log(selectedFriend);
-
-    console.log(
-      "String",
-      JSON.stringify({
-        storer_id: currUser!.id,
-        sender_id: prevSelectedFriend.current!.id,
-        receiver_id: currUser!.id,
-        message: ciphertext,
-        iv: ivString,
-      })
-    );
-
     fetch(`${process.env.REACT_APP_HEROKU_URL}/message/store`, {
       method: "POST",
       headers: {
@@ -268,9 +327,6 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         }
         return response.json();
       })
-      .then((data) => {
-        console.log("Message stored", data);
-      })
       .catch((error) => {
         console.error("Error sending message:", error.message);
       });
@@ -285,15 +341,15 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               {<RandomEmoji id={selectedFriend.id} />}
             </span>{" "}
             {selectedFriend.username}{" "}
-            {friendsPublicKey === null ||
-            selectedFriend === null
+            {friendsPublicKey === null || prevSelectedFriend.current === null
               ? "❌"
               : "✅"}
           </h2>
           <div className="flex flex-col flex-1">
             <div
-              className="flex-1 overflow-y-auto  mb-5"
+              className="flex-1 overflow-y-auto mb-5"
               style={{ maxHeight: "calc(100vh - 14rem)" }}
+              ref={scrollableDivRef}
             >
               {chatLoading ? (
                 <div className="animate-pulse p-1 flex h-10 w-4/5 space-x-4">
@@ -379,7 +435,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               )}
             </div>
             {friendsPublicKey === null ||
-            selectedFriend === null ? (
+            prevSelectedFriend.current === null ? (
               <div className="bg-gray-200 rounded-lg flex items-center justify-between p-6 h-28">
                 <input
                   type="text"

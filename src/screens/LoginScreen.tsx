@@ -62,7 +62,6 @@ export const LoginScreen = () => {
 
         setPrivateKey(generatedKeyPair.privateKey);
         setPublicKey(generatedKeyPair.publicKey);
-        
         setToken(response.data.token);
 
         const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, response.data.user.salt);

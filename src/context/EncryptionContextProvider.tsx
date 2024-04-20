@@ -39,25 +39,27 @@ export const EncryptionContextProvider = ({
   children,
 }: EncryptionContextProviderProps) => {
   const [publicKey, setPublicKey] = useState<CryptoKey | null>(null);
-  const [friendsPublicKey, setFriendsPublicKey] = useState<CryptoKey | null>(null);
+  const [friendsPublicKey, setFriendsPublicKey] = useState<CryptoKey | null>(
+    null
+  );
   const [privateKey, setPrivateKey] = useState<CryptoKey | null>(null);
   const [PKDF2Key, setPKDF2Key] = useState<PKDF2Keys | null>(null);
 
   useEffect(() => {
-    console.log("Public key has been set")
-  }, [setPublicKey])
+    console.log("Private key has been set");
+  }, [setPrivateKey]);
 
   useEffect(() => {
-    console.log("Friends' Public key has been set")
-  }, [setFriendsPublicKey])
+    console.log("Public key has been set");
+  }, [setPublicKey]);
 
   useEffect(() => {
-    console.log("Private key has been set")
-  }, [setPrivateKey])
+    console.log("Friend's Public key has been set");
+  }, [setFriendsPublicKey]);
 
   useEffect(() => {
-    console.log("PBKDF2 key has been set")
-  }, [setPKDF2Key])
+    console.log("PBKDF2 key has been set");
+  }, [setPKDF2Key]);
 
   // useEffect(() => {
   //   async function fetchKeyFromCookie() {
@@ -83,7 +85,6 @@ export const EncryptionContextProvider = ({
   //   setKeyAsCookie();
   // }, [PKDF2Key]);
 
- 
   const contextValue: ChatRoomConnectionContextType = {
     publicKey,
     setPublicKey,

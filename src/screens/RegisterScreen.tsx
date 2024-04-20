@@ -93,7 +93,6 @@ export const RegisterScreen = () => {
 
         const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, salt);
         setPKDF2Key(pkdf2Key);
-        
         setLoading(false);
         navigation("/");
       } else {

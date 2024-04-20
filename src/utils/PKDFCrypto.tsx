@@ -1,4 +1,4 @@
-import hmac from "crypto-js/hmac";
+import { PKDF2Keys } from "./Types";
 
 const pkdf2DeriveKeysFromPassword = async (password, salt) => {
   try {
@@ -93,7 +93,7 @@ const pkdf2DecryptMessage = async (
   const receivedHmac = encryptedMessage.hmac;
   const encryptionKey = derivedKeys.encryptionKey;
   const hmacKey = derivedKeys.hmacKey;
-  
+
   try {
     const hmac = await window.crypto.subtle.sign(
       { name: "HMAC" },
@@ -135,22 +135,41 @@ const stringToBuffer = (ivString: string) => {
   return Uint8Array.from(atob(ivString), (c) => c.charCodeAt(0));
 };
 
-const pbkdf2KeyToString = async (key) => {
-  const exportedKey = await window.crypto.subtle.exportKey("jwk", key);
-  console.log(exportedKey);
-  return JSON.stringify(exportedKey);
+const pbkdf2KeyToString = async (key: PKDF2Keys) => {
+  const exportedPKDF2Key = await window.crypto.subtle.exportKey("jwk", key.encryptionKey);
+  const exportedHMacKey = await window.crypto.subtle.exportKey("jwk", key.hmacKey);
+  const newPKDF2KeysObject = {
+    encryptionKey: exportedPKDF2Key,
+    hmacKey: exportedHMacKey
+  }
+  return newPKDF2KeysObject;
 };
 
-const stringToPbkdf2Key = async (encodedKey: string) => {
-  const jwkKey = JSON.parse(encodedKey);
+const stringToPbkdf2Key = async (jwkKeys) => {
+  console.log(jwkKeys.encryptionKey);
   const importedKey = await window.crypto.subtle.importKey(
     "jwk",
-    jwkKey,
-    { name: "PBKDF2" },
-    false,
+    jwkKeys.encryptionKey,
+    { name: "AES-GCM", length: 256 },
+    true,
     ["encrypt", "decrypt"]
+  );  
+
+  console.log(jwkKeys.hmacKey);
+
+  const importedHMACKey = await crypto.subtle.importKey(
+    "jwk",
+    jwkKeys.hmacKey, 
+    { name: "HMAC", hash: "SHA-256" }, 
+    true, 
+    ["sign", "verify"]
   );
-  return importedKey;
+
+  const newPKDF2Keys: PKDF2Keys = {
+    encryptionKey: importedKey,
+    hmacKey: importedHMACKey
+  }
+  return newPKDF2Keys;
 };
 
 const pkdfDemo = async () => {

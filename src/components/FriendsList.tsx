@@ -5,7 +5,7 @@ import { User } from "../utils/Types";
 import RandomEmoji from "./RandomEmoji.tsx";
 import { Link } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
-import { UserUpdateContext } from "../context/UserContextProvider.tsx";
+import { TokenUpdateContext, UserUpdateContext } from "../context/UserContextProvider.tsx";
 
 interface FriendsListProps {
   selectedFriend: User | null;
@@ -23,6 +23,7 @@ export const FriendsList: React.FC<FriendsListProps> = ({
   getFriends,
 }) => {
   const setCurrUser = useContext(UserUpdateContext);
+  const setToken = useContext(TokenUpdateContext);
   const [friendListLoading, setFriendListLoading] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export const FriendsList: React.FC<FriendsListProps> = ({
 
   const handleLogout = () => {
     setCurrUser(null);
+    setToken(null);
   };
 
   return (

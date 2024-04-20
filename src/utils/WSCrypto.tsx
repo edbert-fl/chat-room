@@ -1,5 +1,5 @@
 const generateKeyPair = async () => {
-  // Generate the key pair
+  // Generate the RSA key pair
   const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSA-OAEP",
@@ -14,28 +14,97 @@ const generateKeyPair = async () => {
   return keyPair;
 };
 
-const wsEncryptMessage = async (message, recipientPublicKey) => {
-  const encryptedMessage = await crypto.subtle.encrypt(
+const generateHMACKey = async () => {
+  const hmacKey = await crypto.subtle.generateKey(
     {
-      name: "RSA-OAEP",
+      name: "HMAC",
+      hash: {name: "SHA-256"}
     },
-    recipientPublicKey,
-    new TextEncoder().encode(message)
+    true,
+    ["sign", "verify"]
   );
-  return encryptedMessage;
+
+  return hmacKey;
+}
+
+const wsEncryptMessage = async (message, publicKey, hmacKey) => {
+  const messageUint8 = new TextEncoder().encode(message);
+
+  const hmac = await crypto.subtle.sign(
+    {
+      name: "HMAC"
+    },
+    hmacKey,
+    messageUint8
+  );
+
+  const ciphertext = await crypto.subtle.encrypt(
+    {
+      name: "RSA-OAEP"
+    },
+    publicKey,
+    messageUint8
+  );
+
+  const HMACKeyArrayBuffer = await crypto.subtle.exportKey('raw', hmacKey);
+  const encryptedHMACKey = await crypto.subtle.encrypt(
+    {
+      name: "RSA-OAEP"
+    },
+    publicKey,
+    HMACKeyArrayBuffer
+  );
+
+  return { ciphertext, encryptedHMACKey, hmac };
 };
 
 const wsDecryptMessage = async (
-  encryptedMessage: ArrayBuffer,
-  recipientPrivateKey: CryptoKey
+  encryptedMessage,
+  recipientPrivateKey,
+  encryptedHMACKey,
+  receivedHmac
 ) => {
+  // Decrypt message using RSA
   const decryptedMessage = await crypto.subtle.decrypt(
     {
-      name: "RSA-OAEP",
+      name: "RSA-OAEP"
     },
     recipientPrivateKey,
     encryptedMessage
   );
+
+
+  const HMACKeyBuffer = await crypto.subtle.decrypt(
+    {
+      name: "RSA-OAEP"
+    },
+    recipientPrivateKey,
+    encryptedHMACKey
+  );
+
+  const importedHMACKey = await crypto.subtle.importKey(
+    'raw', 
+    HMACKeyBuffer, 
+    { name: 'HMAC', hash: { name: 'SHA-256' } }, 
+    false, 
+    ['sign', 'verify'] 
+  );
+
+  // Verify HMAC
+  const isValid = await crypto.subtle.verify(
+    {
+      name: "HMAC"
+    },
+    importedHMACKey,
+    receivedHmac,
+    decryptedMessage
+  );
+
+  if (!isValid) {
+    throw new Error("HMAC verification failed");
+  }
+
+  // Convert decrypted message to string
   return new TextDecoder().decode(decryptedMessage);
 };
 
@@ -90,16 +159,21 @@ const runDemo = async () => {
 
   const messageToSend = "Hello, World!";
 
+  const hmacKey = generateHMACKey();
+
   const encryptedMessage = await wsEncryptMessage(
     messageToSend,
-    importedPublicKey
+    importedPublicKey,
+    hmacKey
   );
 
-  console.log("Encrypted message:", new Uint8Array(encryptedMessage));
+  console.log("Encrypted message:", new Uint8Array(encryptedMessage.ciphertext));
 
   const decryptedMessage = await wsDecryptMessage(
-    encryptedMessage,
-    recipientPrivateKey
+    encryptedMessage.ciphertext,
+    recipientPrivateKey,
+    encryptedMessage.encryptedHMACKey,
+    encryptedMessage.hmac
   );
 
   console.log("Decrypted message:", decryptedMessage);
@@ -113,5 +187,6 @@ export {
   importPublicKeyFromJWK,
   arrayBufferToBase64,
   base64ToArrayBuffer,
+  generateHMACKey,
   runDemo,
 };

@@ -5,9 +5,13 @@ import React, {
   Dispatch,
   SetStateAction,
   useEffect,
+  useContext,
 } from "react";
 import { User } from "../utils/Types";
 import Cookies from "js-cookie";
+import { generateKeyPair } from "../utils/WSCrypto.tsx";
+import { ChatRoomConnectionContext } from "./EncryptionContextProvider.tsx";
+import { pbkdf2KeyToString, stringToPbkdf2Key } from "../utils/PKDFCrypto.tsx";
 
 interface UserContextProviderProps {
   children: ReactNode;
@@ -25,27 +29,59 @@ const UserContextProvider = ({ children }: UserContextProviderProps) => {
   const [currUser, setCurrUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  const { setPublicKey, setPrivateKey, PKDF2Key, setPKDF2Key } = useContext(
+    ChatRoomConnectionContext
+  );
+
   useEffect(() => {
-    const userDataFromCookie = Cookies.get("currUser");
-    const sessionTokenFromCookie = Cookies.get("sessionToken");
-    if (userDataFromCookie && sessionTokenFromCookie) {
-      const parsedUserData = JSON.parse(userDataFromCookie);
-      setCurrUser(parsedUserData);
-      setToken(sessionTokenFromCookie);
+    async function setContextValuesFromCookies() {
+      const userDataFromCookie = Cookies.get("currUser");
+      const sessionTokenFromCookie = Cookies.get("sessionToken");
+      const PKDF2KeyFromCookie = Cookies.get("PKDF2Key");
+
+      if (userDataFromCookie && sessionTokenFromCookie && PKDF2KeyFromCookie) {
+        const parsedUserData = JSON.parse(userDataFromCookie);
+        const pkdf2Key = await stringToPbkdf2Key(JSON.parse(PKDF2KeyFromCookie));
+        setCurrUser(parsedUserData);
+        setToken(sessionTokenFromCookie);
+        setPKDF2Key(pkdf2Key);
+      }
     }
+    setContextValuesFromCookies();
   }, []);
 
   useEffect(() => {
     if (currUser) {
-      Cookies.set("currUser", JSON.stringify(currUser), { expires: 1 }); // Store user data in cookies for 1 day
+      Cookies.set("currUser", JSON.stringify(currUser), { expires: 1 });
     } else {
       Cookies.remove("currUser");
     }
   }, [currUser]);
 
   useEffect(() => {
+    async function savePKDF2KeyToCookie() {
+      if (PKDF2Key) {
+        const PKDF2KeyString = await pbkdf2KeyToString(PKDF2Key);
+        console.log(PKDF2KeyString)
+        Cookies.set("PKDF2Key", JSON.stringify(PKDF2KeyString), { expires: 1 });
+      } else {
+        Cookies.remove("PKDF2Key");
+      }
+    }
+
+    savePKDF2KeyToCookie();
+  }, [PKDF2Key]);
+
+  useEffect(() => {
+    async function setKeyPairs() {
+      const generatedKeyPair = await generateKeyPair();
+      setPrivateKey(generatedKeyPair.privateKey);
+      setPublicKey(generatedKeyPair.publicKey);
+    }
+
     if (token) {
-      Cookies.set("sessionToken", token, { expires: 1 }); // Store user data in cookies for 1 day
+      Cookies.set("sessionToken", token, { expires: 1 });
+      setKeyPairs();
     } else {
       Cookies.remove("sessionToken");
     }

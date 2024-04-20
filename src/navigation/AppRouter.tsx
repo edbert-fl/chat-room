@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { UserContext } from "../context/UserContextProvider.tsx";
+import { TokenContext, UserContext } from "../context/UserContextProvider.tsx";
 import LoginScreen from "../screens/LoginScreen.tsx";
 import RegisterScreen from "../screens/RegisterScreen.tsx";
 import HomeScreen from "../screens/HomeScreen.tsx";
@@ -8,6 +8,7 @@ import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.
 
 const AppRouter = () => {
   const currUser = useContext(UserContext);
+  const token = useContext(TokenContext);
   const {
     publicKey,
     privateKey,
@@ -16,7 +17,7 @@ const AppRouter = () => {
   return (
     <Router>
       <Routes>
-        {currUser && publicKey && privateKey && PKDF2Key ? (
+        {currUser && publicKey && privateKey && PKDF2Key && token ? (
           <Route path="/" element={<HomeScreen />} />
         ) : (
           <>

@@ -6,9 +6,7 @@ import React, {
   Dispatch,
   useEffect,
 } from "react";
-import { ChatRoomConnection } from "../utils/Types";
-import Cookies from "js-cookie";
-import { pbkdf2KeyToString, stringToPbkdf2Key } from "../utils/PKDFCrypto.tsx";
+import { PKDF2Keys } from "../utils/Types";
 
 interface EncryptionContextProviderProps {
   children: ReactNode;
@@ -21,8 +19,8 @@ export interface ChatRoomConnectionContextType {
   setFriendsPublicKey: Dispatch<SetStateAction<CryptoKey | null>>;
   privateKey: CryptoKey | null;
   setPrivateKey: Dispatch<SetStateAction<CryptoKey | null>>;
-  PKDF2Key: CryptoKey | null;
-  setPKDF2Key: Dispatch<SetStateAction<CryptoKey | null>>;
+  PKDF2Key: PKDF2Keys | null;
+  setPKDF2Key: Dispatch<SetStateAction<PKDF2Keys | null>>;
 }
 
 export const ChatRoomConnectionContext =
@@ -43,7 +41,7 @@ export const EncryptionContextProvider = ({
   const [publicKey, setPublicKey] = useState<CryptoKey | null>(null);
   const [friendsPublicKey, setFriendsPublicKey] = useState<CryptoKey | null>(null);
   const [privateKey, setPrivateKey] = useState<CryptoKey | null>(null);
-  const [PKDF2Key, setPKDF2Key] = useState<CryptoKey | null>(null);
+  const [PKDF2Key, setPKDF2Key] = useState<PKDF2Keys | null>(null);
 
   useEffect(() => {
     console.log("Public key has been set")

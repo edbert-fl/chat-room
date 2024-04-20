@@ -10,7 +10,7 @@ import { WebSocketContext } from "../context/WebSocketContextProvider.tsx";
 import WS_STATUS from "../utils/WSStatus.tsx";
 import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
 import { pkdf2DecryptMessage, stringToBuffer } from "../utils/PKDFCrypto.tsx";
-import { exportPublicKeyToJWK, generateKeyPair } from "../utils/WSCrypto.tsx";
+import { exportPublicKeyToJWK } from "../utils/WSCrypto.tsx";
 
 const HomeScreen = () => {
   const currUser = useContext(UserContext);
@@ -18,11 +18,7 @@ const HomeScreen = () => {
   const ws = useContext(WebSocketContext);
   const {
     publicKey,
-    setPublicKey,
-    privateKey,
-    setPrivateKey,
-    PKDF2Key,
-    setPKDF2Key
+    PKDF2Key
   } = useContext(ChatRoomConnectionContext);
 
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
@@ -102,6 +98,7 @@ const HomeScreen = () => {
           const encryptedMessage = {
             iv: stringToBuffer(message.iv),
             ciphertext: stringToBuffer(message.message).buffer,
+            hmac: message.hmac
           };
           const decryptedMessage = await pkdf2DecryptMessage(
             encryptedMessage,

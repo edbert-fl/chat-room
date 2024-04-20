@@ -11,23 +11,10 @@ const generateKeyPair = async () => {
     ["encrypt", "decrypt"]
   );
 
-  const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-  const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-
-  const publicKeyArray = new Uint8Array(publicKey);
-  const privateKeyArray = new Uint8Array(privateKey);
-
-  console.log("Key pair public key", publicKeyArray);
-  console.log("Key pair private key", privateKeyArray);
-
   return keyPair;
 };
 
 const wsEncryptMessage = async (message, recipientPublicKey) => {
-  const publicKey = await crypto.subtle.exportKey("spki", recipientPublicKey);
-  const publicKeyArray = new Uint8Array(publicKey);
-  console.log("Public key when encrypting", publicKeyArray);
-
   const encryptedMessage = await crypto.subtle.encrypt(
     {
       name: "RSA-OAEP",
@@ -42,13 +29,6 @@ const wsDecryptMessage = async (
   encryptedMessage: ArrayBuffer,
   recipientPrivateKey: CryptoKey
 ) => {
-  const privateKey = await crypto.subtle.exportKey(
-    "pkcs8",
-    recipientPrivateKey
-  );
-  const privateKeyArray = new Uint8Array(privateKey);
-  console.log("Private key when decrypting", privateKeyArray);
-
   const decryptedMessage = await crypto.subtle.decrypt(
     {
       name: "RSA-OAEP",
@@ -99,7 +79,6 @@ const base64ToArrayBuffer = (base64String) => {
 };
 
 const runDemo = async () => {
-  console.log("<---------------------------->")
   const recipientKeyPair = await generateKeyPair();
 
   const recipientPublicKey = recipientKeyPair.publicKey;

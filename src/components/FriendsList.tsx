@@ -26,6 +26,7 @@ export const FriendsList: React.FC<FriendsListProps> = ({
   const [friendListLoading, setFriendListLoading] = useState(false);
 
   useEffect(() => {
+    console.log("Loading Friends")
     setFriendListLoading(true);
     getFriends();
     setFriendListLoading(false);

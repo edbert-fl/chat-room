@@ -22,11 +22,8 @@ export const LoginScreen = () => {
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
   const {
-    publicKey,
     setPublicKey,
-    privateKey,
     setPrivateKey,
-    PKDF2Key,
     setPKDF2Key
   } = useContext(ChatRoomConnectionContext);
 
@@ -67,11 +64,9 @@ export const LoginScreen = () => {
         setPublicKey(generatedKeyPair.publicKey);
         
         setToken(response.data.token);
-        console.log(response.data);
 
         const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, response.data.user.salt);
         setPKDF2Key(pkdf2Key);
-        console.log(pkdf2Key);
 
         setLoading(false);
         navigation("/");

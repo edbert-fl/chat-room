@@ -44,4 +44,9 @@ export interface ChatRoomConnection {
     privateKey: CryptoKey
 }
 
+export interface PKDF2Keys {
+    encryptionKey: CryptoKey
+    hmacKey: CryptoKey
+}
+
 export const dateTimeFormat = "MM/DD/YYYY h:mm A"

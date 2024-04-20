@@ -3,6 +3,7 @@ import React, {
   SetStateAction,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { Message, User } from "../utils/Types";
@@ -44,100 +45,103 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   const {
     publicKey,
-    setPublicKey,
     friendsPublicKey,
     setFriendsPublicKey,
     privateKey,
-    setPrivateKey,
     PKDF2Key,
-    setPKDF2Key,
   } = useContext(ChatRoomConnectionContext);
 
   const [messageDraft, setMessageDraft] = useState<string>("");
   // eslint-disable-next-line
   const [chatLoading, setChatLoading] = useState(false);
 
+  const prevSelectedFriend = useRef<User | null>(null);
+  
   useEffect(() => {
-    const newWs = new WebSocket(
-      `${process.env.REACT_APP_WEBSOCKET_SERVER as string}?userId=${
-        currUser!.id
-      }`
-    );
+    if (!ws) {
+      const newWs = new WebSocket(
+        `${process.env.REACT_APP_WEBSOCKET_SERVER as string}?userId=${
+          currUser!.id
+        }`
+      );
 
-    newWs.onopen = () => {};
+      newWs.onopen = () => {};
 
-    newWs.onmessage = async (event) => {
-      const websocketMessage = JSON.parse(event.data);
-      console.log(websocketMessage);
+      newWs.onmessage = async (event) => {
+        const websocketMessage = JSON.parse(event.data);
+        console.log(websocketMessage);
 
-      if (websocketMessage.type === WS_STATUS.MESSAGE_TRANSFER) {
-        try {
-          if (!privateKey) {
-            console.error("Private key not generated");
-            return;
+        if (websocketMessage.type === WS_STATUS.MESSAGE_TRANSFER) {
+          try {
+            if (!privateKey) {
+              console.error("Private key not generated");
+              return;
+            }
+
+            const encryptedMessageBuffer = base64ToArrayBuffer(
+              websocketMessage.data.message
+            );
+
+            const decryptedMessage = await wsDecryptMessage(
+              encryptedMessageBuffer,
+              privateKey
+            );
+            const message = {
+              ...websocketMessage.data,
+              message: decryptedMessage,
+            };
+
+            // Store message with my own pbkdf2 encryption
+            storeMessage(decryptedMessage);
+
+            setMessages((prevMessages) => [...prevMessages, message]);
+          } catch (error) {
+            console.error("Error receiving and decrypting message:", error);
           }
-
-          const encryptedMessageBuffer = base64ToArrayBuffer(
-            websocketMessage.data.message
+        } else if (
+          websocketMessage.type === WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY
+        ) {
+          setFriendsPublicKey(
+            await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
           );
 
-          console.log("EMS", encryptedMessageBuffer);
-          const decryptedMessage = await wsDecryptMessage(
-            encryptedMessageBuffer,
-            privateKey
+          // Timeout to allow state to update
+          setTimeout(async () => {
+            const myJWKPublicKey = await exportPublicKeyToJWK(publicKey);
+            const newConnection = {
+              type: WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY,
+              data: {
+                senderID: currUser!.id,
+                receiverID: websocketMessage.data.senderID,
+                jwkPublicKey: myJWKPublicKey,
+              },
+            };
+            newWs.send(JSON.stringify(newConnection));
+          }, 500);
+        } else if (
+          websocketMessage.type === WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY
+        ) {
+          setFriendsPublicKey(
+            await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
           );
-          const message = {
-            ...websocketMessage.data,
-            message: decryptedMessage,
-          };
-
-          // Store message with my own pbkdf2 encryption
-          storeMessage(decryptedMessage);
-
-          setMessages((prevMessages) => [...prevMessages, message]);
-        } catch (error) {
-          console.error("Error receiving and decrypting message:", error);
         }
-      } else if (
-        websocketMessage.type === WS_STATUS.REQUEST_TO_SEND_PUBLIC_KEY
-      ) {
-        setFriendsPublicKey(
-          await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
-        );
+      };
 
-        // Timeout to allow state to update
-        setTimeout(async () => {
-          const myJWKPublicKey = await exportPublicKeyToJWK(publicKey);
-          const newConnection = {
-            type: WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY,
-            data: {
-              senderID: currUser!.id,
-              receiverID: websocketMessage.data.senderID,
-              jwkPublicKey: myJWKPublicKey,
-            },
-          };
-          console.log("Responding to request for public key", newConnection);
-          newWs.send(JSON.stringify(newConnection));
-        }, 500);
-      } else if (
-        websocketMessage.type === WS_STATUS.ACCEPTED_REQUEST_FOR_PUBLIC_KEY
-      ) {
-        setFriendsPublicKey(
-          await importPublicKeyFromJWK(websocketMessage.data.jwkPublicKey)
-        );
-      }
-    };
+      newWs.onclose = () => {};
 
-    newWs.onclose = () => {};
+      setWs(newWs);
 
-    setWs(newWs);
-
-    // Clean up WebSocket connection on unmount
-    return () => {
-      newWs.close();
-    };
+      // Clean up WebSocket connection on unmount
+      return () => {
+        newWs.close();
+      };
+    }
     // eslint-disable-next-line
   }, [currUser, setMessages]);
+
+  useEffect(() => {
+    prevSelectedFriend.current = selectedFriend;
+  }, [selectedFriend]);
 
   const sendMessage = async (messageDraftContent) => {
     const pkdf2EncryptedData = await pkdf2EncryptMessage(
@@ -161,6 +165,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         receiver_id: selectedFriend!.id,
         message: ciphertext,
         iv: ivString,
+        hmac: pkdf2EncryptedData.hmac,
       }),
     })
       .then((response) => {
@@ -207,8 +212,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           sender: data.message.sender,
           receiver: data.message.receiver,
           sentAt: data.message.sentAt,
-        }
-        setMessages((prevMessages) => [...prevMessages, newLocallyDisplayedMessage])
+        };
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          newLocallyDisplayedMessage,
+        ]);
       })
       .catch((error) => {
         console.error("Error sending message:", error.message);
@@ -224,13 +232,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     const ciphertext = bufferToString(pkdf2EncryptedData.ciphertext);
     const ivString = bufferToString(pkdf2EncryptedData.iv);
 
-    console.log("String", JSON.stringify({
-      storer_id: currUser!.id,
-      sender_id: selectedFriend!.id,
-      receiver_id: currUser!.id,
-      message: ciphertext,
-      iv: ivString,
-    }))
+    console.log(selectedFriend);
+
+    console.log(
+      "String",
+      JSON.stringify({
+        storer_id: currUser!.id,
+        sender_id: prevSelectedFriend.current!.id,
+        receiver_id: currUser!.id,
+        message: ciphertext,
+        iv: ivString,
+      })
+    );
 
     fetch(`${process.env.REACT_APP_HEROKU_URL}/message/store`, {
       method: "POST",
@@ -242,10 +255,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       },
       body: JSON.stringify({
         storer_id: currUser!.id,
-        sender_id: selectedFriend!.id,
+        sender_id: prevSelectedFriend.current!.id,
         receiver_id: currUser!.id,
         message: ciphertext,
         iv: ivString,
+        hmac: pkdf2EncryptedData.hmac,
       }),
     })
       .then((response) => {
@@ -255,7 +269,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         return response.json();
       })
       .then((data) => {
-        console.log("Message stored", data)
+        console.log("Message stored", data);
       })
       .catch((error) => {
         console.error("Error sending message:", error.message);
@@ -270,7 +284,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             <span className="text-[28px]">
               {<RandomEmoji id={selectedFriend.id} />}
             </span>{" "}
-            {selectedFriend.username} {friendsPublicKey === null ? "❌" : "✅"}
+            {selectedFriend.username}{" "}
+            {friendsPublicKey === null ||
+            selectedFriend === null
+              ? "❌"
+              : "✅"}
           </h2>
           <div className="flex flex-col flex-1">
             <div
@@ -360,27 +378,43 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 })
               )}
             </div>
-            <div className="bg-gray-200 rounded-lg flex items-center justify-between p-6 h-28">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                className="w-full border border-gray-300 rounded-md px-3 py-2 mr-2 focus:outline focus:outline-teal-300"
-                value={messageDraft}
-                onChange={(e) => setMessageDraft(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    sendMessage(messageDraft);
-                    setMessageDraft("");
-                  }
-                }}
-              />
-              <button
-                className="w-20 bg-teal-500 text-white py-2 px-4 rounded-md hover:bg-teal-600"
-                onClick={() => sendMessage(messageDraft)}
-              >
-                Send
-              </button>
-            </div>
+            {friendsPublicKey === null ||
+            selectedFriend === null ? (
+              <div className="bg-gray-200 rounded-lg flex items-center justify-between p-6 h-28">
+                <input
+                  type="text"
+                  placeholder="Encrypting your conversation..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 mr-2 focus:outline"
+                  value={messageDraft}
+                  onChange={(e) => setMessageDraft(e.target.value)}
+                />
+                <button className="w-20 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-500">
+                  ...
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-200 rounded-lg flex items-center justify-between p-6 h-28">
+                <input
+                  type="text"
+                  placeholder="Type your message..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 mr-2 focus:outline focus:outline-teal-300"
+                  value={messageDraft}
+                  onChange={(e) => setMessageDraft(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      sendMessage(messageDraft);
+                      setMessageDraft("");
+                    }
+                  }}
+                />
+                <button
+                  className="w-20 bg-teal-500 text-white py-2 px-4 rounded-md hover:bg-teal-600"
+                  onClick={() => sendMessage(messageDraft)}
+                >
+                  Send
+                </button>
+              </div>
+            )}
           </div>
         </>
       ) : (

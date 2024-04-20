@@ -11,6 +11,7 @@ import {
 } from "../context/UserContextProvider.tsx";
 import { pkdf2DeriveKeysFromPassword } from "../utils/PKDFCrypto.tsx";
 import { ChatRoomConnectionContext } from "../context/EncryptionContextProvider.tsx";
+import { generateKeyPair } from "../utils/WSCrypto.tsx";
 
 export const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -22,7 +23,11 @@ export const RegisterScreen = () => {
 
   const setCurrUser = useContext(UserUpdateContext);
   const setToken = useContext(TokenUpdateContext);
-  const { setPKDF2Key } = useContext(ChatRoomConnectionContext);
+  const {
+    setPublicKey,
+    setPrivateKey,
+    setPKDF2Key
+  } = useContext(ChatRoomConnectionContext);
 
   const navigation = useNavigate();
 
@@ -79,8 +84,17 @@ export const RegisterScreen = () => {
           createdAt: response.data.user.created_at,
         });
 
+        const generatedKeyPair = await generateKeyPair();
+
+        setPrivateKey(generatedKeyPair.privateKey);
+        setPublicKey(generatedKeyPair.publicKey);
+        
         setToken(response.data.token);
 
+        const pkdf2Key = await pkdf2DeriveKeysFromPassword(password, salt);
+        setPKDF2Key(pkdf2Key);
+        
+        setLoading(false);
         navigation("/");
       } else {
         setError(`${response.data.error}`);
